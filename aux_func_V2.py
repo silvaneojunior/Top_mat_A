@@ -94,7 +94,10 @@ def FronteiraPeriodica(U):
 def DerivadaEspacial(U, Δx, Λ, AdicionaGhostPoints,network):
     Fhat = []
     U = AdicionaGhostPoints(U) # Adiciona ghost cells de acordo com as condições de fronteira
-    beta_weight=network(U)
+    
+    U_diff=tf.concat([U[:,2:]-U[:,:-2],U[:,2:]-2*U[:,1:-1]+U[:,:-2]],axis=2)
+    
+    beta_weight=network(U_diff)
     U=U[:,:,0]
     beta_weight=beta_weight[:,:,0]
     
@@ -111,11 +114,14 @@ def DerivadaEspacial(U, Δx, Λ, AdicionaGhostPoints,network):
     U_full=tf.transpose(U_full,[1,0,2])
     beta_weight_full=tf.transpose(beta_weight_full,[1,0,2])
     
-    M = tf.math.reduce_max(tf.abs(U_full),axis=2,keepdims=True) #Λ
-    # M = tf.math.reduce_max(tf.abs(U),keepdims=True) #Λ
-
-    f_plus = (U_full**2/2 + M*U_full) / 2
-    f_minus = (U_full**2/2 - M*U_full) / 2
+    #M = tf.math.reduce_max(tf.abs(U_full),axis=2,keepdims=True) #Λ
+    M = 1
+    
+    f_plus = (U_full + M*U_full)/2
+    f_minus = (U_full - M*U_full)/2
+    
+#     f_plus = (U_full**2/2 + M*U_full) / 2
+#     f_minus = (U_full**2/2 - M*U_full) / 2
     
     f_half_minus = WenoZ5ReconstructionMinus(f_plus[:,:,:-1],beta_weight_full[:,:-1,:]) # Aplicar WENO em cada variável característica separadamente
     f_half_plus = WenoZ5ReconstructionPlus(f_minus[:,:,1:],beta_weight_full[:,1:,:])
@@ -158,6 +164,7 @@ def WenoZ5ReconstructionMinus(u0,beta_weight):#u1, u2, u3, u4, u5):
     β = tf.math.reduce_sum(u * (u @ A),axis=3)
     β = tf.transpose(β,[1,2,0])
     β = β*(beta_weight+0.01)
+
     #β = beta_weight
     
     # Calcula o indicador de suavidade global
