@@ -18,7 +18,8 @@ def Graph_Burgers(u, Δt, Δx, fronteira, network=Null_net.Network):
     Δt           (float): variação temporal do estado inicial para o final
     Δx           (float): distância espacial dos pontos na malha utilizada
     fronteira (function): função que determina o comportamento do algoritmo na fronteira
-    network          (?): ???
+    network   (function): função que computa o valor de saída da rede neural a partir do valor 
+                          de entrada
     -------------------------------------------------------------------------------------------
     u           (tensor): valores da função após Δt unidades de tempo
     -------------------------------------------------------------------------------------------
@@ -41,7 +42,8 @@ def Graph_Burgers2(u, t_final, Δx, CFL, fronteira, network=Null_net.Network):
     Δx           (float): distância espacial dos pontos na malha utilizada
     CFL          (float): constante utilizada para determinar o tamanho da malha temporal
     fronteira (function): função que determina o comportamento do algoritmo na fronteira
-    network          (?): ???
+    network   (function): função que computa o valor de saída da rede neural a partir do valor 
+                          de entrada
     -------------------------------------------------------------------------------------------
     u           (tensor): valores da função após Δt unidades de tempo
     -------------------------------------------------------------------------------------------
@@ -49,7 +51,7 @@ def Graph_Burgers2(u, t_final, Δx, CFL, fronteira, network=Null_net.Network):
     
     t = 0.0 # Instante de tempo incial para a computação
 
-    while tf.math.reduce_any(t<t_final):
+    while tf.math.reduce_any(t < t_final):
         
         # Valor utilizado para obter o Δt
         Λ  = tf.math.reduce_max(tf.abs(u), axis=1, keepdims=True)
@@ -119,7 +121,8 @@ def DerivadaEspacial(U, Δx, AdicionaGhostPoints, network):
     Δx                     (float): distância espacial dos pontos na malha utilizada
     AdicionaGhostPoints (function): função que adicionada pontos na malha de acordo 
                                     com a condição de fronteira
-    network ()
+    network             (function): função que computa o valor de saída da rede 
+                                    neural a partir do valor de entrada
     ---------------------------------------------------------------------------------
     Fdif                  (tensor): derivada espacial
     ---------------------------------------------------------------------------------
@@ -351,31 +354,33 @@ def AnimaçãoBurgers():
     x = tf.range(-2, 2, Δx, dtype=float_pres) # Gerando a malha de pontos no espaço unidimensional
     
     # Gerando uma condição inicial aleatória
-    
+    #------------------------------------------------------------------------------------------------------------------
     k1 = tf.random.uniform([1], 0, 20, dtype='int32')   # Amostrando uma frequência aleatória para a função seno
     k1 = tf.cast(k1, dtype=float_pres)                  # Mudando o tipo do tensor
     k2 = tf.random.uniform([1], 0, 20, dtype='int32')   # Amostrando uma frequência aleatória para a função seno
     k2 = tf.cast(k2, dtype=float_pres)                  # Mudando o tipo do tensor
     a  = tf.random.uniform([1], 0, 1, dtype=float_pres) # Amostrando um peso aleatória para ponderar as funções seno
     b  = tf.random.uniform([1], 0, 2, dtype=float_pres) # Amostrando um modificador de amplitude aleatório
+    #------------------------------------------------------------------------------------------------------------------
 
     # Fixando a condição inicial
-    
+    #-----------------------------------------------
 #     k1 = 1.0 # Frequência para a função seno
 #     k2 = 2.0 # Frequência para a função seno
 #     a  = 0.5 # Peso para ponderar as funções seno
 #     b  = 0.5 # Modificador de amplitude
+    #-----------------------------------------------
 
-    u1 =     a * tf.expand_dims(tf.math.sin(k1*pi*x),axis=1) # Gerando pontos de acordo com a primeira função seno
-    u2 = (1-a) * tf.expand_dims(tf.math.sin(k2*pi*x),axis=1) # Gerando pontos de acordo com a segunda função seno
+    u1 =     a * tf.expand_dims(tf.math.sin(k1*pi*x), axis=1) # Gerando pontos de acordo com a primeira função seno
+    u2 = (1-a) * tf.expand_dims(tf.math.sin(k2*pi*x), axis=1) # Gerando pontos de acordo com a segunda função seno
     
     u = b*(u1+u2)                 # Obtendo a condição inicial a partir das funções senos
     u = tf.expand_dims(u, axis=0) # Acrescentando uma dimensão
     
-    CFL = 0.5                        # Constante utilizada para determinar o tamanho da malha temporal
-    Δt = 0.01                        # Δt entre cada frame de animação
-    T = tf.range(0.0, 2.0, Δt)       # Frames da animação
-    T = tf.cast(T, dtype=float_pres) # Mudando o tipo do tensor
+    CFL = 0.5                          # Constante utilizada para determinar o tamanho da malha temporal
+    Δt  = 0.01                         # Δt entre cada frame de animação
+    T   = tf.range(0.0, 2.0, Δt)       # Frames da animação
+    T   = tf.cast(T, dtype=float_pres) # Mudando o tipo do tensor
 
     t = 0.0 # Instante de tempo inicial
     
@@ -385,7 +390,7 @@ def AnimaçãoBurgers():
     fig = plt.figure(1, constrained_layout=True, figsize=(6,6))
     ax  = fig.add_subplot(1, 1, 1)
     ax.set_ylim(-2, 2)
-    #ax.set_xlim(0,1)
+    # ax.set_xlim(0,1)
     line = ax.plot(x, tf.squeeze(u))
     hfig = display(fig, display_id=True)
     Δt_list = tf.zeros([0], dtype=float_pres)
@@ -396,7 +401,7 @@ def AnimaçãoBurgers():
         squeezed_u = tf.squeeze(u)
         Δt_list = tf.concat([Δt_list, elem_Δt], axis=0)
         
-        t += Δt
+        t += Δt # Avançando no tempo
         
         # Detectando se há pontos com valor NaN
         if tf.math.reduce_any(tf.math.is_nan(squeezed_u)):

@@ -241,18 +241,20 @@ def AnimaçãoBurgers():
     x  = np.arange(-2,2,Δx) # Gerando a malha de pontos no espaço unidimensional
     
     # Condição inicial aleatória
-    
+    #----------------------------------------------------------------------------------------------------------
     k1 = np.round(np.random.uniform(-0.5,20.5)) # Amostrando uma frequência aleatória para a função seno
     k2 = np.round(np.random.uniform(-0.5,20.5)) # Amostrando uma frequência aleatória para a função seno
     a  = np.random.uniform(0,1)                 # Amostrando um peso aleatória para ponderar as funções seno
     b  = np.random.uniform(0,2)                 # Amostrando um modificador de amplitude aleatório
+    #----------------------------------------------------------------------------------------------------------
     
     # Condição inicial fixada
-    
+    #-----------------------------------------------
 #     k1 = 1.0 # Frequência para a função seno
 #     k2 = 2   # Frequência para a função seno
 #     a  = 0.5 # Peso para ponderar as funções seno
 #     b  = 0.5 # Modificador de amplitude
+    #-----------------------------------------------
     
     u1 =     a * np.asarray([np.sin(k1*np.pi*x)]).T # Gerando pontos de acordo com a primeira função seno
     u2 = (1-a) * np.asarray([np.sin(k2*np.pi*x)]).T # Gerando pontos de acordo com a segunda função seno
