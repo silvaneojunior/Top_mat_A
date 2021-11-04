@@ -1,3 +1,10 @@
 */.ipynb_checkpoints/
 .ipynb_checkpoints/
 data.bck
+wandb/
+__pycache__/
+*.data-00000-of-00001
+*.index
+checkpoint
+Modelo otimizado 1/
+Modelo teste/

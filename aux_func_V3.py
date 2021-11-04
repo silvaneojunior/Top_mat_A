@@ -103,7 +103,6 @@ def DerivadaEspacial(U, Δx, Λ, AdicionaGhostPoints,network):
     
     helper1=lambda i: U[:,i:i+6]
     helper2=lambda i: beta_weight[:,i:i+3]
-    
     U_full=tf.concat(tf.map_fn(helper1,tf.range(U.shape[1]-5),fn_output_signature=U.dtype),axis=0)
     beta_weight_full=tf.concat(
         tf.map_fn(helper2,
@@ -160,19 +159,20 @@ def WenoZ5ReconstructionMinus(u0,beta_weight):#u1, u2, u3, u4, u5):
     ɛ = 10.0**(-40)
     # Calcula os indicadores de suavidade locais
     u=tf.stack([u0,u0,u0],axis=0)
-    
+
     β = tf.math.reduce_sum(u * (u @ A),axis=3)
     β = tf.transpose(β,[1,2,0])
-    β = β*(beta_weight+0.01)
+    #β = β*(beta_weight+0.01)
 
     #β = beta_weight
-    
+
     # Calcula o indicador de suavidade global
     τ = tf.abs(β[:,:,0:1] - β[:,:,2:3])
     # Calcula os pesos do WENO-Z
     α = (1 + (τ/(β + ɛ))**2) @ B
     soma = tf.math.reduce_sum(α,axis=2,keepdims=True)
     ω = α / soma
+    ω = (1-beta_weight)*ω + beta_weight*tf.constant([[[1,6,3]]],dtype=float_pres)/10
     # Calcula os fhat em cada subestêncil
     fhat=u0 @ C
     #Finalmente, calcula o fhat do estêncil todo
