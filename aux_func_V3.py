@@ -81,7 +81,7 @@ def Burgers(u, Δt, Δx, CFL, fronteira, network=Null_net.Network):
     return Graph_Burgers2(u, Δt, Δx, CFL, fronteira, network)
 
 def FronteiraFixa(U):
-     """
+    """
     Função que adicionada pontos na malha de acordo com a condição de fronteira
     fixa, repetindo os valores nos extremos da malha
     ----------------------------------------------------------------------------
@@ -174,10 +174,10 @@ def DerivadaEspacial(U, Δx, AdicionaGhostPoints, network):
     f_plus  = (U_full**2/2 + M*U_full) / 2                      # Fluxo positivo
     f_minus = (U_full**2/2 - M*U_full) / 2                      # Fluxo negativo
     
-    # Setup para equação do transporte
-    M = 1                           # Valor utilizado para realizar a separação de fluxo
-    f_plus  = (U_full + M*U_full)/2 # Fluxo positivo
-    f_minus = (U_full - M*U_full)/2 # Fluxo negativo
+#     # Setup para equação do transporte
+#     M = 1                           # Valor utilizado para realizar a separação de fluxo
+#     f_plus  = (U_full + M*U_full)/2 # Fluxo positivo
+#     f_minus = (U_full - M*U_full)/2 # Fluxo negativo
     
     # Aplicar WENO em cada variável característica separadamente para depois juntar
     f_half_minus = WenoZ5ReconstructionMinus(f_plus[:,:,:-1], beta_weight_full[:,:-1,:]) 
