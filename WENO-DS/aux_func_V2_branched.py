@@ -208,8 +208,8 @@ def FastDerivadaEspacial(U, Δx, AdicionaGhostPoints, index, network):
     index_cont = tf.where(index)[:,1]
     index_desc = tf.where(tf.math.logical_not(index))[:,1]
     
-    f_minus_cont = tf.gather(f_minus, index_cont , axis = 1)
-    f_minus_desc = tf.gather(f_minus, index_desc , axis = 1)
+    f_minus_cont = tf.gather(f_minus, index_cont, axis = 1)
+    f_minus_desc = tf.gather(f_minus, index_desc, axis = 1)
     f_plus_cont  = tf.gather(f_plus , index_cont, axis = 1)
     f_plus_desc  = tf.gather(f_plus , index_desc, axis = 1)
     

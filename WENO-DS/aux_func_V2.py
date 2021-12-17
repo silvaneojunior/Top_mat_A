@@ -52,6 +52,12 @@ def Graph_Burgers2(u, t_final, Δx, CFL, fronteira, network=Null_net.Network):
     t = tf.math.reduce_max(tf.abs(u), axis=1, keepdims=True)*0 # Instante de tempo incial para a computação
 
     while tf.math.reduce_any(t < t_final):
+        tf.autograph.experimental.set_loop_options(
+            shape_invariants = [
+                (u, tf.TensorShape([u.shape[0], u.shape[1], None])),
+                (t, tf.TensorShape([t.shape[0], t.shape[1], None]))
+            ]
+        )
         
         # Valor utilizado para obter o Δt
         Λ  = tf.math.reduce_max(tf.abs(u), axis=1, keepdims=True)
