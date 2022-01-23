@@ -1,4 +1,6 @@
 # Código para implementar o WENO-Z utilizando o tensorflow
+# Nesta versão, os pesos do WENO-Z são modificados fazendo uma combinação convexa entre os pesos ideias e os pesos do WENO-Z, sendo que o valor da combinação convexa é escolhido pela rede neural.
+
 # Importando os módulos que serão utilizados
 
 import tensorflow as tf
@@ -32,7 +34,7 @@ def Graph_Burgers(u, Δt, Δx, fronteira, network=Null_net.Network):
     
     return u
 
-def Burgers(u, t_final, Δx, CFL, fronteira, network=Null_net.Network):
+def Graph_Burgers2(u, t_final, Δx, CFL, fronteira, network=Null_net.Network):
     """
     Função que recebe um tensor u contendo os valores de uma determinada função e retorna os 
     valores após Δt unidades de tempo estimados de acordo com a equação de Burgers
@@ -49,30 +51,34 @@ def Burgers(u, t_final, Δx, CFL, fronteira, network=Null_net.Network):
     -------------------------------------------------------------------------------------------
     """
     
-    t = tf.math.reduce_max(tf.abs(u), axis=1, keepdims=True)*0 # Instante de tempo incial para a computação
+    t = 0.0 # Instante de tempo incial para a computação
 
     while tf.math.reduce_any(t < t_final):
+        
+        # Valor utilizado para obter o Δt
         Λ  = tf.math.reduce_max(tf.abs(u), axis=1, keepdims=True)
-
+        
         # Obtendo o valor de Δt a partir de CFL
-        Δt = Δx*CFL/Λ  
-        u=Burgers_step(u,Δt,Δx,CFL,t,t_final, fronteira, network)
+        Δt = Δx*CFL/Λ
+        
+        # Caso o passo temporal utrapasse o valor de t_final então o 
+        # tamanho do passo se torna o tempo que falta para se obter o 
+        # t_final
+        Δt = tf.where(t + Δt > t_final, t_final - t, Δt)
+        
+        # SSP Runge-Kutta 3,3
+        u1 = u - Δt*DerivadaEspacial(u, Δx, fronteira, network)
+        u2 = (3*u + u1 - Δt*DerivadaEspacial(u1, Δx, fronteira, network)) / 4.0
+        u  = (u + 2*u2 - 2*Δt*DerivadaEspacial(u2, Δx, fronteira, network)) / 3.0
+        
         t  = t + Δt # Avançando no tempo
+        
     return u
 
 @tf.function # Ornamento que transforma a função em uma função do tensorflow
-def Burgers_step(u,Δt,Δx,CFL,t,t_final, fronteira, network):
-
-    # Caso o passo temporal utrapasse o valor de t_final então o 
-    # tamanho do passo se torna o tempo que falta para se obter o 
-    # t_final
-    Δt = tf.where(t + Δt > t_final, t_final - t, Δt)
-
-    # SSP Runge-Kutta 3,3
-    u1 = u - Δt*DerivadaEspacial(u, Δx, fronteira, network)
-    u2 = (3*u + u1 - Δt*DerivadaEspacial(u1, Δx, fronteira, network)) / 4.0
-    u  = (u + 2*u2 - 2*Δt*DerivadaEspacial(u2, Δx, fronteira, network)) / 3.0
-    return u
+def Burgers(u, Δt, Δx, CFL, fronteira, network=Null_net.Network):
+    """Função wrapper de 'Graph_Burgers2'"""
+    return Graph_Burgers2(u, Δt, Δx, CFL, fronteira, network)
 
 def FronteiraFixa(U):
     """
@@ -221,7 +227,7 @@ def WenoZ5ReconstructionMinus(u0, beta_weight):
     subestêncil de cinco pontos
     --------------------------------------------------------------------------------
     u0          (tensor): tensor com o substêncil de 5 pontos
-    beta_weight (tensor): modificadores dos indicadores de suavidade
+    beta_weight (tensor): modificadores dos pesos do substêncil
     --------------------------------------------------------------------------------
     fhat        (tensor): estimativa da função
     --------------------------------------------------------------------------------
@@ -233,7 +239,6 @@ def WenoZ5ReconstructionMinus(u0, beta_weight):
     
     β = tf.math.reduce_sum(u * (u @ A), axis=3)
     β = tf.transpose(β, [1,2,0])
-    β = β*(beta_weight+0.01)
     
     # Calcula o indicador de suavidade global
     τ = tf.abs(β[:,:,0:1] - β[:,:,2:3])
@@ -242,6 +247,7 @@ def WenoZ5ReconstructionMinus(u0, beta_weight):
     α    = (1 + (τ/(β + ɛ))**2) @ B
     soma = tf.math.reduce_sum(α, axis=2, keepdims=True)
     ω    = α / soma
+    ω = (1-beta_weight)*ω + beta_weight*tf.constant([[[1,6,3]]],dtype=float_pres)/10
     
     # Calcula os fhat em cada subestêncil
     fhat = u0 @ C
