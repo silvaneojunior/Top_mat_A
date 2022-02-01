@@ -3,9 +3,10 @@
 data.bck
 wandb/
 __pycache__/
-*.data-00000-of-00001
-*.index
 checkpoint
 Modelo otimizado 1/
 Modelo teste/
 *.bck
+*.bkp
+*.bkp
+WENO-DS reescrito/Datasets/Dados temporais.bkp
