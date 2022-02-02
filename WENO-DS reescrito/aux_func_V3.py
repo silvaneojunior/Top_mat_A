@@ -285,10 +285,10 @@ class WENO(k.layers.Layer):
         """
         self.layers = []
         wei_reg = k.regularizers.L2(0*10**-3)                                                                        # Regularização dos pesos da rede 
-        self.layers.append(k.layers.ZeroPadding1D(padding=2))                                                        # Camada de padding de zeros em 1 dimensão
-        self.layers.append(k.layers.Conv1D(5, 5, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
-        self.layers.append(k.layers.ZeroPadding1D(padding=2))                                                        # Camada de padding de zeros em 1 dimensão
-        self.layers.append(k.layers.Conv1D(3, 5, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
+        self.layers.append(k.layers.ZeroPadding1D(padding=1))                                                        # Camada de padding de zeros em 1 dimensão
+        self.layers.append(k.layers.Conv1D(5, 3, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
+        self.layers.append(k.layers.ZeroPadding1D(padding=1))                                                        # Camada de padding de zeros em 1 dimensão
+        self.layers.append(k.layers.Conv1D(3, 3, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
         self.layers.append(k.layers.Conv1D(1, 1, activation='sigmoid', dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
         self.layers.append(k.layers.Flatten(dtype=float_pres))
         
