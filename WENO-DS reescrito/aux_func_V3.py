@@ -114,10 +114,9 @@ def WENO_Z(β,δ,API):
 def WENO_Z_plus(β,δ,API):
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
-
     # Calcula os pesos do WENO-Z+
-    gamma=(τ + ɛ)/(β + ɛ)
-    α    = (1 + gamma**2+δ/gamma) @ B
+    γ =(τ + ɛ)/(β + ɛ)
+    α    = (1 + γ**2+δ/γ) @ B
     return α
 
 def WENO_JS(β,δ,API):
@@ -126,7 +125,15 @@ def WENO_JS(β,δ,API):
     α    = ((1/(β + ɛ))**2) @ B
     return α
 
+def WENO_mix(β,δ,API):
+    # Calcula o indicador de suavidade global
+    δ=δ[...,1:2]
+    β=β*δ+(1-δ)*np.asarray([[1/10,6/10,3/10]])
+    τ = API.abs(β[...,0:1] - β[...,2:3])
 
+    # Calcula os pesos do WENO-Z
+    α    = (1 + (τ/(β + ɛ))**2) @ B
+    return α
 
 def create_simulation(API,flux_calc,WENO,network=None,compile_flag=True):
     
@@ -264,7 +271,7 @@ class WENO(k.layers.Layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,flux_calc,WENO_method):
+    def __init__(self,flux_calc,WENO_method,conv_size=5):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -276,6 +283,10 @@ class WENO(k.layers.Layer):
         """
         super(WENO, self).__init__(dtype=float_pres) # Chamando o inicializador da superclasse
         self.Sim, self.Sim_step, self.DerivadaEspacial, self.Get_weights=create_simulation(API_TensorFlow,flux_calc,WENO_method,network=self.network_graph,compile_flag=False)
+        if (conv_size-1)%2==0:
+            self.conv_size=conv_size
+        else:
+            raise(ValueError('Invalid conv_size. Expected a odd number, got {}'.format(conv_size)))
     def build(self, input_shape):
         """
         Função para compor as camadas que constituem essa camada da rede neural
@@ -285,10 +296,10 @@ class WENO(k.layers.Layer):
         """
         self.layers = []
         wei_reg = k.regularizers.L2(0*10**-3)                                                                        # Regularização dos pesos da rede 
-        self.layers.append(k.layers.ZeroPadding1D(padding=2))                                                        # Camada de padding de zeros em 1 dimensão
-        self.layers.append(k.layers.Conv1D(5, 5, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
-        self.layers.append(k.layers.ZeroPadding1D(padding=2))                                                        # Camada de padding de zeros em 1 dimensão
-        self.layers.append(k.layers.Conv1D(3, 5, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
+        self.layers.append(k.layers.ZeroPadding1D(padding=(self.conv_size-1)//2))                                                        # Camada de padding de zeros em 1 dimensão
+        self.layers.append(k.layers.Conv1D(5, self.conv_size, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
+        self.layers.append(k.layers.ZeroPadding1D(padding=(self.conv_size-1)//2))                                                        # Camada de padding de zeros em 1 dimensão
+        self.layers.append(k.layers.Conv1D(3, self.conv_size, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
         self.layers.append(k.layers.Conv1D(1, 1, activation='sigmoid', dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
         self.layers.append(k.layers.Flatten(dtype=float_pres))
         
@@ -314,7 +325,7 @@ class WENO_temporal(WENO):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,Δx,CFL,Δt,fronteira,flux_calc,WENO_method):
+    def __init__(self,Δx,CFL,Δt,fronteira,flux_calc,WENO_method,conv_size=5):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -324,7 +335,7 @@ class WENO_temporal(WENO):
         fronteira (function): função que determina o comportamento do algoritmo na fronteira
         --------------------------------------------------------------------------------------
         """
-        super(WENO_temporal,self).__init__(flux_calc,WENO_method)
+        super(WENO_temporal,self).__init__(flux_calc,WENO_method,conv_size)
         self.Δx=tf.Variable(Δx,dtype=float_pres,trainable=False)
         self.CFL=tf.Variable(CFL,dtype=float_pres,trainable=False)
         self.Δt=tf.Variable(Δt,dtype=float_pres,trainable=False)
@@ -337,7 +348,7 @@ class WENO_espacial(WENO):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,Δx,fronteira,flux_calc,WENO_method):
+    def __init__(self,Δx,fronteira,flux_calc,WENO_method,conv_size=5):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -347,12 +358,51 @@ class WENO_espacial(WENO):
         fronteira (function): função que determina o comportamento do algoritmo na fronteira
         --------------------------------------------------------------------------------------
         """
-        super(WENO_espacial,self).__init__(flux_calc,WENO_method)
+        super(WENO_espacial,self).__init__(flux_calc,WENO_method,conv_size)
         self.Δx=tf.Variable(Δx,dtype=float_pres,trainable=False)
         self.fronteira=fronteira
         
     def call(self, inpt, mask=None):
         return self.DerivadaEspacial(inpt,self.Δx, FronteiraPeriodica)
+
+
+class WENO_temporal_Z_plus(WENO_temporal):
+    def network_graph(self, x):
+        """
+        Função utilizado para executar sucessivamente as camadas dessa camada 
+        da rede neural, passando o input de uma para a próxima
+        ----------------------------------------------------------------------
+        x (tensor): valor de entrada da rede
+        ----------------------------------------------------------------------
+        y (tensor): valor de saída da rede
+        ----------------------------------------------------------------------
+        """
+        y = tf.stack([x[...,2:]-x[...,:-2], x[...,2:]-2*x[...,1:-1]+x[...,:-2]], axis=-1)
+        # Percorrendo as camadas
+        for layer in self.layers:
+            
+            # Atualizando o valor de entrada para a próxima camada
+            y = layer(y)
+        return self.Δx**y
+
+class WENO_espacial_Z_plus(WENO_espacial):
+    def network_graph(self, x):
+        """
+        Função utilizado para executar sucessivamente as camadas dessa camada 
+        da rede neural, passando o input de uma para a próxima
+        ----------------------------------------------------------------------
+        x (tensor): valor de entrada da rede
+        ----------------------------------------------------------------------
+        y (tensor): valor de saída da rede
+        ----------------------------------------------------------------------
+        """
+        y = tf.stack([x[...,2:]-x[...,:-2], x[...,2:]-2*x[...,1:-1]+x[...,:-2]], axis=-1)
+        # Percorrendo as camadas
+        for layer in self.layers:
+            
+            # Atualizando o valor de entrada para a próxima camada
+            y = layer(y)
+        return self.Δx**y
     
 class MES_OF(k.losses.Loss):
     """Criando uma função de custo cuja superclasse é a de funções de
