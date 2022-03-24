@@ -8,7 +8,7 @@ def map_fn(fn, elems, dtype=None, parallel_iterations=None, back_prop=True, swap
         outs.append(fn(i))
     return stack(outs,axis=0)
 
-cast=lambda x,dtype: x.astype(dtype)
+cast=lambda x,dtype: asarray(x).astype(dtype)
 max=amax
 min=amin
 abs=absolute

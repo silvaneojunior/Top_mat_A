@@ -35,15 +35,13 @@ def FluxDerivative(Q, γ, Δx, BoundaryCondition):
         Λ = Eigenvalues(Qi, γ)
 
         Qa = Average(Qi)
-        R, L = Eigensystem(Qa, γ)
 
+        R, L = Eigensystem(Qa, γ)
         W = np.matmul(Qi,L)       # Transforms into characteristic variables
         G = Λ*W       # The flux for the characteristic variables is Λ * L*Q
         for j in range(3):    # WENO reconstruction of the flux G
             G_half[:,j] = ReconstructedFlux(G[:,j], W[:,j], M)
-
         F_half[i,:] = np.matmul(G_half,R) # Brings back to conservative variables
-
     return (F_half[1:,:] - F_half[:-1,:])/Δx # Derivative of Flux
 
 def Average(Q):
