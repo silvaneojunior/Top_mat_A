@@ -182,6 +182,7 @@ class diff_equation(equation):
         f_minus = U / 2                      # Fluxo negativo
         return f_plus,f_minus
 
+# Dummy comment
 γ=1.4
 
 class euler_equation(equation):
