@@ -46,214 +46,172 @@ C = np.transpose(C)
 
 
 
-def FronteiraFixa(U, API):
-    """
-    Função que adicionada pontos na malha de acordo com a condição de fronteira
-    fixa, repetindo os valores nos extremos da malha
-    ----------------------------------------------------------------------------
-    U (tensor): malha de pontos a ser estendida de acordo
-    ----------------------------------------------------------------------------
-    U (tensor): malha de pontos estendida
-    ----------------------------------------------------------------------------
-    """
-    U = API.concat([
-        U[...,0:1],
-        U[...,0:1],
-        U[...,0:1],
-        U,
-        U[...,-1:],
-        U[...,-1:],
-        U[...,-1:]],
-        axis=-1)
-    return U
-
-def FronteiraPeriodica(U, API):
+def FronteiraFixa(U, API, n=3):
     """
     Função que adicionada pontos na malha de acordo com a condição de fronteira
     periódica, continuado os valores de acordo com os extremos opostos
     ----------------------------------------------------------------------------
     U (tensor): malha de pontos a ser estendida de acordo
+    API       : pacote utilizado para manipulação de arrays
+    n    (int): número de pontos para acresentar de cada lado
     ----------------------------------------------------------------------------
     U (tensor): malha de pontos estendida
     ----------------------------------------------------------------------------
     """
-    U = API.concat([U[...,-3:], U, U[...,:3]], axis=-1)
+    U = API.concat([
+            API.repeat( U[...,:1], n, axis=-1),
+            U,
+            API.repeat(U[...,-1:], n, axis=-1)],
+        axis=-1)
     return U
 
+def FronteiraPeriodica(U, API, n=3):
+    """
+    Função que adicionada pontos na malha de acordo com a condição de fronteira
+    periódica, continuado os valores de acordo com os extremos opostos
+    ----------------------------------------------------------------------------
+    U (tensor): malha de pontos a ser estendida de acordo
+    API       : pacote utilizado para manipulação de arrays
+    n    (int): número de pontos para acresentar de cada lado
+    ----------------------------------------------------------------------------
+    U (tensor): malha de pontos estendida
+    ----------------------------------------------------------------------------
+    """
+    U = API.concat([U[...,-n:], U, U[...,:n]], axis=-1)
+    return U
 
+def FronteiraReflexiva(U,API,n=3):
+    """
+    Função que adicionada pontos na malha de acordo com a condição de fronteira
+    periódica, continuado os valores de acordo com os extremos opostos
+    ----------------------------------------------------------------------------
+    U (tensor): malha de pontos a ser estendida de acordo
+    API       : pacote utilizado para manipulação de arrays
+    n    (int): número de pontos para acresentar de cada lado
+    ----------------------------------------------------------------------------
+    U (tensor): malha de pontos estendida
+    ----------------------------------------------------------------------------
+    """
+    U0 = API.concat([
+            API.flip(U[...,0,:n], axis=[-1]),
+            U[...,0,:],
+            API.flip(U[...,0,-n:], axis=[-1])],
+        axis=-1)
 
-def transp_equation(U_full, API):
-    # Setup para equação do transporte
-    M = 1                           # Valor utilizado para realizar a separação de fluxo
-    f_plus  = (U_full + M*U_full)/2 # Fluxo positivo
-    f_minus = (U_full - M*U_full)/2 # Fluxo negativo
-    return f_plus, f_minus
+    U1 = API.concat([
+            -API.flip(U[...,1,:n],axis=[-1]),
+            U[...,1,:],
+            -API.flip(U[...,1,-n:],axis=[-1])],
+        axis=-1)
+
+    U2 = API.concat([
+            API.flip(U[...,2,:n],axis=[-1]),
+            U[...,2,:],
+            API.flip(U[...,2,-n:],axis=[-1])],
+        axis=-1)
     
-def burgers_equation(U_full, API):
-    M = API.max(API.abs(U_full), axis=-1, keepdims=True) # Valor utilizado para realizar a separação de fluxo
-    f_plus  = (U_full**2/2 + M*U_full) / 2 # Fluxo positivo
-    f_minus = (U_full**2/2 - M*U_full) / 2 # Fluxo negativo
-    return f_plus, f_minus
+    U = tf.stack([U0,U1,U2], axis=-2)
+    
+    return U
 
-def diff_equation(U_full, API):
-    f_plus  = U_full / 2 # Fluxo positivo
-    f_minus = U_full / 2 # Fluxo negativo
-    return f_plus, f_minus
-
-
-
-def WENO_JS(β, δ, API, mapa):
-    β = β*(δ+0.1)
+def WENO_JS(β, δ, API, Δx, mapping, map_function, p=2):
+    
+    # β = β*(δ+0.1)
+    
     # Calcula os pesos do WENO-JS
-    α    = ((1/(β + ɛ))**2) @ B
-    soma = API.sum(α, axis=-1, keepdims=True)
-    ω    = α / soma
+    λ = ((1/(β + ɛ))**p)
+    α = mapping(λ, API, map_function)
     
-    return α, ω
+    return α
 
-def WENO_Z(β, δ, API, mapa):
+def WENO_Z(β, δ, API, Δx, mapping, map_function, p=2):
+    
     # Calcula o indicador de suavidade global
+    # β = β*(δ+0.1)
     τ = API.abs(β[...,0:1] - β[...,2:3])
-    β = β*(δ+0.1)
 
     # Calcula os pesos do WENO-Z
-    α    = (1 + (τ/(β + ɛ))**2) @ B
-    soma = API.sum(α, axis=-1, keepdims=True)
-    ω    = α / soma
+    λ = (1 + (τ/(β + ɛ))**p)
+    α = mapping(λ, API, map_function)
     
-    return α, ω
+    return α
 
-def WENO_Z_plus(β, δ, API, mapa):
+def WENO_Z_plus(β, δ, API, Δx, mapping, map_function, p=2):
+    
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
-
+    
     # Calcula os pesos do WENO-Z+
-    gamma=(τ + ɛ)/(β + ɛ)
-    α    = (1 + gamma**2+δ/gamma) @ B
+    γ = (τ + ɛ)/(β + ɛ)
+    λ = (1 + γ**p+(Δx**(2/3))/γ)
+    α = mapping(λ, API, map_function)
+    
+    return α
+    
+null_mapping = lambda λ, API, map_function: API.matmul(λ, B)
+    
+def post_mapping(λ, API, map_function):
+    
+    α    = API.matmul(λ, B)
     soma = API.sum(α, axis=-1, keepdims=True)
     ω    = α / soma
+    α    = map_function(ω, API)
     
-    return α, ω
+    return α
 
-def WENO_JS_M(β, δ, API, mapa):
-    β = β*(δ+0.1)
-    # Calcula os pesos do WENO-JS
-    α    = ((1/(β + ɛ))**2) @ B
-    soma = API.sum(α, axis=-1, keepdims=True)
-    ω    = α / soma
-    ω     = mapa(ω, API)
-    soma  = API.sum(ω, axis=-1, keepdims=True)
-    ω     = ω / soma
+def pre_mapping(λ, API, map_function):
     
-    return α, ω
-
-def WENO_Z_M(β, δ, API, mapa):
-    # Calcula o indicador de suavidade global
-    τ = API.abs(β[...,0:1] - β[...,2:3])
-    β = β*(δ+0.1)
-
-    # Calcula os pesos do WENO-Z
-    α    = (1 + (τ/(β + ɛ))**2) @ B
-    soma = API.sum(α, axis=-1, keepdims=True)
-    ω    = α / soma
-    ω    = mapa(ω, API)
-    soma  = API.sum(ω, axis=-1, keepdims=True)
-    ω     = ω / soma
+    soma = API.sum(λ, axis=-1, keepdims=True)
+    ω    = λ / soma
+    α    = map_function(ω, API)
+    α    = API.matmul(α, B)
     
-    return α, ω
+    return α
 
-def WENO_Z_plus_M(β, δ, API, mapa):
-    # Calcula o indicador de suavidade global
-    τ = API.abs(β[...,0:1] - β[...,2:3])
+Henrick_function = lambda ω, d: ω*(d + d**2 - 3*d*ω + ω**2)/(d**2 + ω*(1-2*d))
 
-    # Calcula os pesos do WENO-Z+
-    gamma = (τ + ɛ)/(β + ɛ)
-    α     = (1 + gamma**2 + δ/gamma) @ B
-    soma  = API.sum(α, axis=-1, keepdims=True)
-    ω     = α / soma
-    ω     = mapa(ω, API)
-    soma  = API.sum(ω, axis=-1, keepdims=True)
-    ω     = ω / soma
-    
-    return α, ω
-
-def WENO_JS_MS(β, δ, API, mapa):
-    β = β*(δ+0.1)
-    # Calcula os pesos do WENO-JS
-    α    = ((1/(β + ɛ))**2)
-    soma = API.sum(α, axis=-1, keepdims=True)
-    ω     = α / soma
-    ω     = mapa(ω, API) @ B
-    soma  = API.sum(ω, axis=-1, keepdims=True)
-    ω     = ω / soma
-    
-    return α, ω
-
-def WENO_Z_MS(β, δ, API, mapa):
-    # Calcula o indicador de suavidade global
-    τ = API.abs(β[...,0:1] - β[...,2:3])
-    β = β*(δ+0.1)
-
-    # Calcula os pesos do WENO-Z
-    α    = (1 + (τ/(β + ɛ))**2)
-    soma = API.sum(α, axis=-1, keepdims=True)
-    ω     = α / soma
-    ω     = mapa(ω, API) @ B
-    soma  = API.sum(ω, axis=-1, keepdims=True)
-    ω     = ω / soma
-    
-    return α, ω
-
-def WENO_Z_plus_MS(β, δ, API, mapa):
-    # Calcula o indicador de suavidade global
-    τ = API.abs(β[...,0:1] - β[...,2:3])
-
-    # Calcula os pesos do WENO-Z+
-    gamma = (τ + ɛ)/(β + ɛ)
-    α     = (1 + gamma**2 + δ/gamma)
-    soma  = API.sum(α, axis=-1, keepdims=True)
-    ω     = α / soma
-    ω     = mapa(ω, API) @ B
-    soma  = API.sum(ω, axis=-1, keepdims=True)
-    ω     = ω / soma
-    
-    return α, ω
-
-def mapa_Henrick(ω, API):
-    
+def Henrick_mapping(ω, API):
+        
     d = [0.1, 0.6, 0.3]
-    
+
     ω0 = ω[...,0:1]
     ω1 = ω[...,1:2]
     ω2 = ω[...,2:]
-    
-    ω0 = ω0*(d[0] + d[0]**2 - 3*d[0]*ω0 + ω0**2)/(d[0]**2 + ω0*(1-2*d[0]))
-    ω1 = ω1*(d[1] + d[1]**2 - 3*d[1]*ω1 + ω1**2)/(d[1]**2 + ω1*(1-2*d[1]))
-    ω2 = ω2*(d[2] + d[2]**2 - 3*d[2]*ω2 + ω2**2)/(d[2]**2 + ω2*(1-2*d[2]))
-    
-    ω = API.concat([ω0, ω1, ω2], axis = -1)
-    
-    return ω
 
-def mapa_Hong(ω, API):
-    d = 1/3
-    ω = ω*(d + d**2 - 3*d*ω + ω**2)/(d**2 + ω*(1-2*d))
-    return ω
+    ω0 = Henrick_function(ω0, d[0])
+    ω1 = Henrick_function(ω1, d[1])
+    ω2 = Henrick_function(ω2, d[2])
+    
+    α = API.concat([ω0, ω1, ω2], axis = -1)
+        
+    return α
+
+def Hong_mapping(ω, API):
+    
+    α = Henrick_function(ω, 1/3)
+    
+    return α
 
 def function_BI(x, k):
-    if x < 1/4:
-        return x
-    elif x < 5/12:
+#     if x < 1/10:
+# #         return 0
+#         return Henrick_function(x, 1/3)
+#     elif x < 7/16:
+#         return 1/3
+#     elif x < 9/10:
+#         if k == 0:
+#             return 2/5
+#         if k == 1:
+#             return 1/5
+#         if k == 2:
+#             return 2/5
+#     else:
+# #         return 1
+#         return Henrick_function(x, 1/3)
+    if x > 1/10 and x < 9/10:
         return 1/3
-    elif x < 2/3:
-        if k == 0:
-            return 5/2
-        if k == 1:
-            return 5/4
-        if k == 2:
-            return 5/2
     else:
-        return x
+        return Henrick_function(x, 1/3)
 
 resolution = 10000
     
@@ -268,66 +226,84 @@ def discrete_map(function):
     return vetor
 
 vetor_BI_0 = discrete_map(lambda x: function_BI(x, k=0))
-vetor_BI_1 = discrete_map(lambda x: function_BI(x, k=0))
-vetor_BI_2 = discrete_map(lambda x: function_BI(x, k=0))
+vetor_BI_1 = discrete_map(lambda x: function_BI(x, k=1))
+vetor_BI_2 = discrete_map(lambda x: function_BI(x, k=2))
 
-def mapa_BI(ω, API):
+def BI_mapping(ω, API):
     
-    index  = API.floor(ω*(resolution+1))
+    index = API.cast(API.floor(ω*(resolution-1)), dtype='int32')
     
     ω0 = API.gather(vetor_BI_0, index[...,0:1])
     ω1 = API.gather(vetor_BI_1, index[...,1:2])
     ω2 = API.gather(vetor_BI_2, index[...,2:])
     
-    ω  = API.concat([ω0, ω1, ω2], axis = -1)
+    α  = API.concat([ω0, ω1, ω2], axis = -1)
     
-    return ω
+    return α
 
-def create_simulation(API, flux_calc, WENO, mapa=lambda x:x, network=None, compile_flag=True):
+class equation:
     
-    def Sim(u, t_final, Δx, CFL, fronteira):    
-        t = API.max(API.abs(u), axis=-1, keepdims=True)*0 # Instante de tempo incial para a computação
-
-        while API.any(t < t_final):
-            Λ  = API.max(API.abs(u), axis=-1, keepdims=True)
-
-            Δt = Δx*CFL/Λ  
-            Δt = API.where(t + Δt > t_final, t_final - t, Δt)
-
-            u = Sim_step(u, Δt, Δx, fronteira)
-            
-            t = t + Δt # Avançando no tempo
-            
-        return u
+    def __init__(self, API, WENO, network, p=2, mapping=null_mapping, map_function=None):
+        
+        self.API          = API
+        self.WENO         = WENO
+        self.network      = network
+        self.p            = p
+        self.mapping      = mapping
+        self.map_function = map_function
+        
+        return None
+        
+    def ReconstructionMinus(self, u0, Δx):
+        
+        if self.network is not None:
+            δ = self.network(self.API.concat([
+                u0[...,0:1,0]  , 
+                u0[...,0:1,1]  , 
+                u0[...,2]      , 
+                u0[...,-1:,-2] , 
+                u0[...,-1:,-1]
+            ], axis=-1))
+            δ = slicer(δ, 3, self.API)
+        else:
+            δ = 1-0.1
+        # Calcula os indicadores de suavidade locais
+#         u = self.API.repeat(self.API.expand_dims(u0,axis=-2),3, axis=-2)
+#         u = self.API.expand_dims(u,axis=-2)    
+        u = u0[:]
     
-    def Sim_step(u, Δt, Δx, fronteira):
-        u1 = u - Δt*DerivadaEspacial(u, Δx, fronteira)
-        u2 = (3*u +   u1 -   Δt*DerivadaEspacial(u1, Δx, fronteira)) / 4.0
-        u  = (  u + 2*u2 - 2*Δt*DerivadaEspacial(u2, Δx, fronteira)) / 3.0
-        return u
+        β0 = self.API.square( 1/2.0*u[...,0] - 2*u[...,1] + 3/2.0*u[...,2]) + 13/12.0*self.API.square(u[...,0] - 2*u[...,1] + u[...,2])
+        β1 = self.API.square(-1/2.0*u[...,1]              + 1/2.0*u[...,3]) + 13/12.0*self.API.square(u[...,1] - 2*u[...,2] + u[...,3])
+        β2 = self.API.square(-3/2.0*u[...,2] + 2*u[...,3] - 1/2.0*u[...,4]) + 13/12.0*self.API.square(u[...,2] - 2*u[...,3] + u[...,4])
+        
+        β = self.API.stack([β0, β1, β2], axis=-1)
+        
+#         β    = self.API.sum((u * self.API.matmul(u, A))[...,0,:], axis=-1)
+        α    = self.WENO(β, δ, self.API, Δx, self.mapping, self.map_function, self.p)
+        soma = self.API.sum(α, axis=-1, keepdims=True)
+        ω    = α / soma
+        
+        # Calcula os fhat em cada subestêncil
+        fhat = self.API.matmul(u0, C)
+        
+        # Calcula o fhat do estêncil todo
+        fhat = self.API.sum(ω * fhat, axis=-1)
 
-    def DerivadaEspacial(U, Δx, AdicionaGhostPoints):
-        """
-        Calcula a derivada espacial numa malha de pontos utilizando o WENO-Z
-        ---------------------------------------------------------------------------------
-        U                     (tensor): valores da função para o cálcula da derivada
-        Δx                     (float): distância espacial dos pontos na malha utilizada
-        AdicionaGhostPoints (function): função que adicionada pontos na malha de acordo 
-                                        com a condição de fronteira
-        network             (function): função que computa o valor de saída da rede 
-                                        neural a partir do valor de entrada
-        ---------------------------------------------------------------------------------
-        Fdif                  (tensor): derivada espacial
-        ---------------------------------------------------------------------------------
-        """
-        U = AdicionaGhostPoints(U,API) # Estende a malha de pontos de acordo com as condições de fronteira
-        U = slicer(U,6,API)
+        return fhat
 
-        f_plus,f_minus = flux_calc(U,API)
+    def ReconstructionPlus(self, u0, Δx):
+        fhat = self.ReconstructionMinus(self.API.reverse(u0, axis=[-1]), Δx)
+        return fhat
+
+    def DerivadaEspacial(self, U, Δx, AdicionaGhostPoints):
+        
+        U = AdicionaGhostPoints(U, self.API) # Estende a malha de pontos de acordo com as condições de fronteira
+
+        f_plus,f_minus = self.flux_sep(U)
 
         # Aplicar WENO em cada variável característica separadamente para depois juntar
-        f_half_minus = ReconstructionMinus(f_plus[...,:-1], network) 
-        f_half_plus  = ReconstructionPlus( f_minus[...,1:], network)
+        f_half_minus = self.ReconstructionMinus(f_plus[...,:-1], Δx) 
+        f_half_plus  = self.ReconstructionPlus( f_minus[...,1:], Δx)
         Fhat         = (f_half_minus + f_half_plus)
 
         # Calculando uma estimava da derivada a partir de diferenças finitas
@@ -335,54 +311,176 @@ def create_simulation(API, flux_calc, WENO, mapa=lambda x:x, network=None, compi
 
         return Fhat
 
-
-    def ReconstructionMinus(u0, network):
-        """
-        Calcula o WENO modificado para obter uma estimativa da função utilizando um 
-        subestêncil de cinco pontos
-        --------------------------------------------------------------------------------
-        u0          (tensor): tensor com o substêncil de 5 pontos
-        beta_weight (tensor): modificadores dos indicadores de suavidade
-        --------------------------------------------------------------------------------
-        fhat        (tensor): estimativa da função
-        --------------------------------------------------------------------------------
-        """
-        
-        if network is not None:
-            δ = network(API.concat([u0[...,0:1,0], u0[...,0:1,1], u0[...,2], u0[...,-1:,-2], u0[...,-1:,-1]], axis=-1))
-            δ = slicer(δ, 3, API)
-        else:
-            δ = 1-0.1
-        # Calcula os indicadores de suavidade locais
-        u = API.repeat(API.expand_dims(u0, axis=-2), 3, axis=-2)
-        u = API.expand_dims(u, axis=-2)
-
-        β = API.sum((u * (u @ A))[...,0,:], axis=-1)
-        ω = WENO(β, δ, API, mapa)[1]
-        
-        # Calcula os fhat em cada subestêncil
-        fhat = u0 @ C
-        
-        # Calcula o fhat do estêncil todo
-        fhat = API.sum(ω * fhat, axis=-1)
-
-        return fhat
-
-    def ReconstructionPlus(u0, network):
-        """
-        Calcula o WENO modificado para obter uma estimativa da função utilizando um 
-        subestêncil de cinco pontos
-        --------------------------------------------------------------------------------
-        u0          (tensor): tensor com o substêncil de 5 pontos
-        beta_weight (tensor): modificadores dos indicadores de suavidade
-        --------------------------------------------------------------------------------
-        fhat        (tensor): estimativa da função
-        --------------------------------------------------------------------------------
-        """
-        # Reciclando a função WenoZ5ReconstructionMinus
-        fhat = ReconstructionMinus(API.reverse(u0, axis=[-1]), network)
-        return fhat
+class transp_equation(equation):
     
+    def maximum_speed(self, U):
+        return self.API.cast(1, float_pres)
+    
+    def flux_sep(self, U):
+        
+        U = slicer(U, 6, self.API)
+        # Setup para equação do transporte
+        
+        # Valor utilizado para realizar a separação de fluxo
+        M = self.maximum_speed(U)
+        
+        f_plus  = (U + M*U)/2 # Fluxo positivo
+        f_minus = (U - M*U)/2 # Fluxo negativo
+        
+        return f_plus, f_minus
+
+class burgers_equation(equation):
+    
+    def maximum_speed(self, U):
+        return self.API.max(self.API.abs(U), axis=-1, keepdims=True)
+    
+    def flux_sep(self, U):
+        
+        U = slicer(U,6,self.API)
+        # Setup para equação do transporte
+        
+        # Valor utilizado para realizar a separação de fluxo
+        M = self.maximum_speed(U)
+        f_plus  = (U**2/2 + M*U) / 2 # Fluxo positivo
+        f_minus = (U**2/2 - M*U) / 2 # Fluxo negativo
+        
+        return f_plus, f_minus
+
+class diff_equation(equation):
+    
+    def maximum_speed(self, U):
+        return 1
+    
+    def flux_sep(self, U):
+        U = slicer(U, 6, self.API)
+        f_plus  = U / 2                      # Fluxo positivo
+        f_minus = U / 2                      # Fluxo negativo
+        return f_plus, f_minus
+
+γ = 1.4
+
+class euler_equation(equation):
+    
+    def Pressure(self,Q):
+        
+        Q0, Q1, Q2 = self.API.unstack(Q, axis=-2)
+        
+        a = γ-1.0
+        b = Q1**2
+        c = 2*Q0
+        d = b/c
+        e = Q2-d
+        
+        return a*e
+
+    def Eigensystem(self,Q):
+        
+        Q0, Q1, Q2 = self.API.unstack(Q, axis=-2)
+        
+        U = Q1/Q0
+        P = self.Pressure(Q)
+        A = self.API.sqrt(γ*P/Q0) # Sound speed
+        H = (Q2 + P)/Q0    # Enthalpy
+        h = 1/(2*H - U**2)
+        
+        ones_ref = self.API.ones(self.API.shape(U), dtype=U.dtype)
+        
+        R1c = self.API.stack([ones_ref,U-A,H - U*A], axis=-2)
+        R2c = self.API.stack([ones_ref,U  ,U**2/2 ], axis=-2)
+        R3c = self.API.stack([ones_ref,U+A,H + U*A], axis=-2)
+        
+        R = self.API.stack([R1c,R2c,R3c], axis=-2)
+        
+        L1c = self.API.stack([U/(2*A) + U**2*h/2, 2 - (2*H)*h, U**2*h/2 - U/(2*A)], axis=-2)
+        L2c = self.API.stack([-U*h - 1/(2*A)    , (2*U)*h    , 1/(2*A) - U*h     ], axis=-2)
+        L3c = self.API.stack([h                 , -2*h       , h                 ], axis=-2)
+        
+        L = self.API.stack([L1c,L2c,L3c], axis=-2)
+        
+        return R, L
+
+    def Eigenvalues(self,Q):
+        
+        Q0, Q1, Q2 = self.API.unstack(Q, axis=-2)
+        
+        U = Q1/Q0
+        P = self.Pressure(Q)
+        A = self.API.sqrt(γ*P/Q0)
+
+        return self.API.stack([U-A, U, U+A], axis=-2)
+
+    def maximum_speed(self,U):
+        eig_val = self.API.abs(self.Eigenvalues(U))
+        return self.API.max(self.API.max(eig_val, axis=-1, keepdims=True), axis=-2, keepdims=True)
+
+    def ReconstructedFlux(self, F, Q, M):
+        
+        M = self.API.expand_dims(M, axis=-3)
+        F_plus  = (F + M*Q)/2
+        F_minus = (F - M*Q)/2
+
+        F_plus  = self.API.einsum('...ijk->...jik', F_plus)
+        F_minus = self.API.einsum('...ijk->...jik', F_minus)
+        
+        F_half_plus  = self.ReconstructionMinus(F_plus[...,:-1], Δx)
+        F_half_minus = self.ReconstructionPlus( F_minus[...,1:], Δx)
+
+        return F_half_plus + F_half_minus
+
+    def DerivadaEspacial(self, Q, Δx, AdicionaGhostPoints):
+        
+        Ord = 5 # The order of the scheme
+        Q   = AdicionaGhostPoints(Q, self.API)
+
+#         N = Q.shape[1]
+
+        M  = self.maximum_speed(Q)
+        Qi = slicer(Q, 6, self.API)
+        Qi = self.API.einsum('...ijk->...jik', Qi)
+        
+        Λ = self.Eigenvalues(Qi)
+        
+        r  = 2
+        Qa = (Qi[...,r] + Qi[...,r+1])/2
+        Qa = self.API.einsum('...ij->...ji', Qa)
+        R, L = self.Eigensystem(Qa)
+            
+        W = self.API.einsum('...nvc,...uvn -> ...nuc', Qi, L) # Transforms into characteristic variables
+        G = Λ*W                                               # The flux for the characteristic variables is Λ * L*Q
+        
+#         M = M[2:N-3]
+        G_half = self.ReconstructedFlux(G, W, M)
+        F_half = self.API.einsum('...vn,...uvn -> ...un', G_half, R) # Brings back to conservative variables
+        
+        return (F_half[...,1:] - F_half[...,:-1])/Δx # Derivative of Flux
+
+
+
+def create_simulation(API, equation_class, WENO, network=None, compile_flag=True, p=2, mapping=null_mapping, map_function=None):
+
+    equation = equation_class(API, WENO, network, p, mapping, map_function)
+    
+    def Sim(u, t_final, Δx, CFL, fronteira):
+        
+        t = 0.0*equation.maximum_speed(u) # Instante de tempo incial para a computação
+        
+        while API.any(t < t_final):
+            Λ  = equation.maximum_speed(u)
+
+            Δt = Δx*CFL/Λ  
+            Δt = API.where(t + Δt > t_final, t_final - t, Δt)
+
+            u = Sim_step(u, Δt, Δx, fronteira)
+            
+            t  = t + Δt # Avançando no tempo
+            
+        return u
+    
+    def Sim_step(u, Δt, Δx, fronteira):
+        u1 =    u        -   Δt*equation.DerivadaEspacial( u, Δx, fronteira)
+        u2 = (3*u +   u1 -   Δt*equation.DerivadaEspacial(u1, Δx, fronteira)) / 4.0
+        u  = (  u + 2*u2 - 2*Δt*equation.DerivadaEspacial(u2, Δx, fronteira)) / 3.0
+        return u
 
     def Get_weights(U, AdicionaGhostPoints):
 
@@ -400,21 +498,23 @@ def create_simulation(API, flux_calc, WENO, mapa=lambda x:x, network=None, compi
         u = API.repeat(API.expand_dims(U, axis=-2), 3, axis=-2)
         u = API.expand_dims(u, axis=-2)
 
-        β = API.sum((u * (u @ A))[...,0,:], axis=-1)
-        α, ω = WENO(β, δ, API, mapa)
-        
+        β = API.sum((u * API.matmul(u, A))[...,0,:], axis=-1)
+        α = WENO(β, δ, API, Δx, mapping, map_function)
+        soma = API.sum(α, axis=-1, keepdims=True)
+        ω    = α / soma
+
         return ω, α, β, δ
     
     if compile_flag:
-        return API.function(Sim), API.function(Sim_step), API.function(DerivadaEspacial), API.function(Get_weights)
+        return API.function(Sim), API.function(Sim_step), API.function(equation.DerivadaEspacial), API.function(Get_weights)
     else:
-        return Sim, Sim_step, DerivadaEspacial, Get_weights
+        return Sim, Sim_step, equation.DerivadaEspacial, Get_weights
     
 class WENO(k.layers.Layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,flux_calc,WENO_method):
+    def __init__(self, flux_calc, WENO_method, conv_size=5, regul_weight=0, p=2, ativ_func=tf.nn.sigmoid, mapping=null_mapping, map_function=None):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -424,9 +524,25 @@ class WENO(k.layers.Layer):
         fronteira (function): função que determina o comportamento do algoritmo na fronteira
         --------------------------------------------------------------------------------------
         """
-        super(WENO, self).__init__(dtype=float_pres) # Chamando o inicializador da superclasse
-        self.Sim, self.Sim_step, self.DerivadaEspacial, self.Get_weights=create_simulation(API_TensorFlow, flux_calc, WENO_method, network=self.network_graph, compile_flag=False)
+        super(WENO, self).__init__(name='WENO_layer',dtype=float_pres) # Chamando o inicializador da superclasse
+        self.Sim, self.Sim_step, self.DerivadaEspacial, self.Get_weights = create_simulation(
+            API_TensorFlow                    ,
+            flux_calc                         ,
+            WENO_method                       ,
+            network      = self.network_graph ,
+            compile_flag = False              ,
+            p            = p                  ,
+            mapping      = mapping            ,
+            map_function = map_function
+        )
+        self.regul_weight = regul_weight
+        self.ativ_func    = ativ_func
         
+        if (conv_size-1)%2 == 0:
+            self.conv_size = conv_size
+        else:
+            raise(ValueError('Invalid conv_size. Expected a odd number, got {}'.format(conv_size)))
+            
     def build(self, input_shape):
         """
         Função para compor as camadas que constituem essa camada da rede neural
@@ -435,13 +551,16 @@ class WENO(k.layers.Layer):
         ------------------------------------------------------------------------
         """
         self.layers = []
-        wei_reg = k.regularizers.L2(0*10**-3)                                                                         # Regularização dos pesos da rede 
-        self.layers.append(k.layers.ZeroPadding1D(padding=1))                                                         # Camada de padding de zeros em 1 dimensão
-        self.layers.append(k.layers.Conv1D(5, 3, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
-        self.layers.append(k.layers.ZeroPadding1D(padding=1))                                                         # Camada de padding de zeros em 1 dimensão
-        self.layers.append(k.layers.Conv1D(3, 3, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
-        self.layers.append(k.layers.Conv1D(1, 1, activation='sigmoid', dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
-        self.layers.append(k.layers.Flatten(dtype=float_pres))
+        self.layers.append(Conv1D(10, self.conv_size, activation=tf.nn.elu     , name='conv1')) # Camada de convolução em 1 dimensão                                                    
+        self.layers.append(Conv1D(10, self.conv_size, activation=tf.nn.elu     , name='conv2')) # Camada de convolução em 1 dimensão
+        self.layers.append(Conv1D( 1,              1, activation=self.ativ_func, name='conv3')) # Camada de convolução em 1 dimensão
+        
+#         wei_reg = k.regularizers.L2(self.regul_weight)                                                                              # Regularização dos pesos da rede 
+#         self.layers.append(k.layers.ZeroPadding1D(padding=(self.conv_size-1)//2))                                                   # Camada de padding de zeros em 1 dimensão
+#         self.layers.append(k.layers.Conv1D(10, self.conv_size, activation='elu'    , dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
+#         self.layers.append(k.layers.ZeroPadding1D(padding=(self.conv_size-1)//2))                                                   # Camada de padding de zeros em 1 dimensão
+#         self.layers.append(k.layers.Conv1D(10, self.conv_size, activation='elu'    , dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
+#         self.layers.append(k.layers.Conv1D( 1,              1, activation='sigmoid', dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
         
     def network_graph(self, x):
         """
@@ -454,18 +573,23 @@ class WENO(k.layers.Layer):
         ----------------------------------------------------------------------
         """
         y = tf.stack([x[...,2:]-x[...,:-2], x[...,2:]-2*x[...,1:-1]+x[...,:-2]], axis=-1)
+        
         # Percorrendo as camadas
-        for layer in self.layers:
-            
+        for layer in self.layers:    
             # Atualizando o valor de entrada para a próxima camada
             y = layer(y)
-        return y
+            
+        return y[...,0]
+    
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
 
 class WENO_temporal(WENO):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,Δx,CFL,Δt,fronteira,flux_calc,WENO_method):
+    def __init__(self, Δx, CFL, Δt, fronteira, flux_calc, WENO_method, conv_size=5, regul_weight=0, p=2, ativ_func=tf.nn.sigmoid, mapping=null_mapping, map_function=None):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -475,20 +599,20 @@ class WENO_temporal(WENO):
         fronteira (function): função que determina o comportamento do algoritmo na fronteira
         --------------------------------------------------------------------------------------
         """
-        super(WENO_temporal,self).__init__(flux_calc,WENO_method)
-        self.Δx  = tf.Variable( Δx, dtype=float_pres, trainable=False)
-        self.CFL = tf.Variable(CFL, dtype=float_pres, trainable=False)
-        self.Δt  = tf.Variable( Δt, dtype=float_pres, trainable=False)
+        super(WENO_temporal, self).__init__(flux_calc, WENO_method, conv_size, regul_weight, p=2, ativ_func=ativ_func, mapping=mapping, map_function=map_function)
+        self.Δx  = tf.constant( Δx, dtype=float_pres)
+        self.CFL = tf.constant(CFL, dtype=float_pres)
+        self.Δt  = tf.constant( Δt, dtype=float_pres)
         self.fronteira = fronteira
         
     def call(self, inpt, mask=None):
-        return self.Sim_step(inpt, self.Δt, self.Δx, FronteiraPeriodica)
+        return self.Sim_step(inpt, self.Δt, self.Δx, self.fronteira)
     
 class WENO_espacial(WENO):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self, Δx, fronteira, flux_calc, WENO_method):
+    def __init__(self, Δx, fronteira, flux_calc, WENO_method, conv_size=5, regul_weight=0, p=2, ativ_func=tf.nn.sigmoid, mapping=null_mapping, map_function=None):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -498,12 +622,55 @@ class WENO_espacial(WENO):
         fronteira (function): função que determina o comportamento do algoritmo na fronteira
         --------------------------------------------------------------------------------------
         """
-        super(WENO_espacial,self).__init__(flux_calc, WENO_method)
-        self.Δx = tf.Variable(Δx, dtype=float_pres, trainable=False)
+        super(WENO_espacial, self).__init__(flux_calc, WENO_method, conv_size, regul_weight, p=2, ativ_func=ativ_func, mapping=mapping, map_function=map_function)
+        self.Δx        = tf.Variable(Δx, dtype=float_pres, trainable=False)
         self.fronteira = fronteira
         
     def call(self, inpt, mask=None):
-        return self.DerivadaEspacial(inpt, self.Δx, FronteiraPeriodica)
+        return self.DerivadaEspacial(inpt, self.Δx, self.fronteira)
+
+
+class WENO_temporal_Z_plus(WENO_temporal):
+    
+    def network_graph(self, x):
+        """
+        Função utilizado para executar sucessivamente as camadas dessa camada 
+        da rede neural, passando o input de uma para a próxima
+        ----------------------------------------------------------------------
+        x (tensor): valor de entrada da rede
+        ----------------------------------------------------------------------
+        y (tensor): valor de saída da rede
+        ----------------------------------------------------------------------
+        """
+        y = tf.stack([x[...,2:]-x[...,:-2], x[...,2:]-2*x[...,1:-1]+x[...,:-2]], axis=-1)
+        
+        # Percorrendo as camadas
+        for layer in self.layers:
+            # Atualizando o valor de entrada para a próxima camada
+            y = layer(y)
+            
+        return self.Δx**y
+
+class WENO_espacial_Z_plus(WENO_espacial):
+    
+    def network_graph(self, x):
+        """
+        Função utilizado para executar sucessivamente as camadas dessa camada 
+        da rede neural, passando o input de uma para a próxima
+        ----------------------------------------------------------------------
+        x (tensor): valor de entrada da rede
+        ----------------------------------------------------------------------
+        y (tensor): valor de saída da rede
+        ----------------------------------------------------------------------
+        """
+        y = tf.stack([x[...,2:]-x[...,:-2], x[...,2:]-2*x[...,1:-1]+x[...,:-2]], axis=-1)
+        
+        # Percorrendo as camadas
+        for layer in self.layers:
+            # Atualizando o valor de entrada para a próxima camada
+            y = layer(y)
+            
+        return self.Δx**y
     
 class MES_OF(k.losses.Loss):
     """Criando uma função de custo cuja superclasse é a de funções de
@@ -537,9 +704,9 @@ class Only_smooth_loss(k.losses.Loss):
     custo do keras"""
     
     def __init__(self, pre_loss, tol=100):
-        super(Only_smooth_loss,self).__init__()
+        super(Only_smooth_loss, self).__init__()
         self.pre_loss = pre_loss
-        self.tol = tol
+        self.tol      = tol
 
     
     def call(self, y_true, y_pred):
@@ -552,7 +719,7 @@ class Only_smooth_loss(k.losses.Loss):
         loss   (tensor): custo associado
         --------------------------------------------------------------------------
         """
-        y_true = tf.cast(y_true, y_pred.dtype) # Convertendo os tipos para evitar conflitos
+        y_true      = tf.cast(y_true, y_pred.dtype) # Convertendo os tipos para evitar conflitos
         valid_index = tf.where(tf.abs(y_true) < self.tol, 1.0, 0.0)
         valid_index = tf.cast(valid_index, y_pred.dtype) # Convertendo os tipos para evitar conflitos
         
@@ -561,15 +728,67 @@ class Only_smooth_loss(k.losses.Loss):
         return loss
 
 def slicer(data, n, API):
+    
     helper = lambda i: data[...,i:i+n]
 
     data_sliced = API.einsum(
     'i...j -> ...ij',
         API.map_fn(
-            helper,                             # Função a ser executada a cada iteração do loop
-            API.range(API.shape(data)[-1]-n+1), # Índices utilizados no loop
-            fn_output_signature=data.dtype      # Tipo da variável de retorno (epecificado pois o tipo de entrado difere do tipo de saída)
+            helper,                    # Função a ser executada a cada iteração do loop
+            API.range(API.shape(data)[-1]-n+1),     # Índices utilizados no loop
+            fn_output_signature=data.dtype # Tipo da variável de retorno (epecificado pois o tipo de entrado difere do tipo de saída)
         )
     )
 
     return data_sliced
+
+class Conv1D(k.layers.Layer):
+    """Criando uma camada de rede neural cuja superclasse é a camada
+    do keras para integrar o algoritmo do WENO com a rede neural"""
+    
+    def __init__(self, n_kernel, kernel_size, activation, name='conv_custom'):
+        """
+        Construtor da classe
+        --------------------------------------------------------------------------------------
+        t_final      (float): tamanho máximo da variação temporal
+        Δx           (float): distância espacial dos pontos na malha utilizada
+        CFL          (float): constante utilizada para determinar o tamanho da malha temporal
+        fronteira (function): função que determina o comportamento do algoritmo na fronteira
+        --------------------------------------------------------------------------------------
+        """
+        super(Conv1D, self).__init__(name=name, dtype=float_pres) # Chamando o inicializador da superclasse
+        self.n_kernel    = n_kernel
+        self.kernel_size = kernel_size
+        self.activation  = activation
+        self.pad         = (kernel_size-1)//2
+        
+        return None
+        
+    def build(self, input_shape):
+        """
+        Função para compor as camadas que constituem essa camada da rede neural
+        ------------------------------------------------------------------------
+        input_shape : não é utilizado por essa função, mas é um argumento obrigatório para camadas do Keras.
+        ------------------------------------------------------------------------
+        """
+        in_size=input_shape[-1]
+        self.w = self.add_weight(self.name+'_'+"kernel",
+                        initializer='glorot_uniform',
+                        shape=[self.kernel_size,in_size,self.n_kernel],
+                        trainable=True
+                                     )
+        self.b = self.add_weight(self.name+'_'+"bias",
+        shape=[1,1,self.n_kernel],
+        trainable=True)
+        
+        return None
+        
+    def call(self,inpt):
+        return self.activation(
+            tf.nn.conv1d(inpt, self.w, [1], padding='SAME')+self.b
+        )
+    
+    def compute_output_shape(self, input_shape):
+        tf.print(input_shape)
+        return input_shape
+    
