@@ -127,7 +127,7 @@ def WENO_JS(β, δ, API, Δx, mapping, map_function, p=2):
 def WENO_Z(β, δ, API, Δx, mapping, map_function, p=2):
     
     # Calcula o indicador de suavidade global
-    # β = β*(δ+0.1)
+    β = β*(δ+0.1)
     τ = API.abs(β[...,0:1] - β[...,2:3])
 
     # Calcula os pesos do WENO-Z
@@ -193,25 +193,25 @@ def Hong_mapping(ω, API):
     return α
 
 def function_BI(x, k):
-#     if x < 1/10:
-# #         return 0
-#         return Henrick_function(x, 1/3)
-#     elif x < 7/16:
-#         return 1/3
-#     elif x < 9/10:
-#         if k == 0:
-#             return 2/5
-#         if k == 1:
-#             return 1/5
-#         if k == 2:
-#             return 2/5
-#     else:
-# #         return 1
-#         return Henrick_function(x, 1/3)
-    if x > 1/10 and x < 9/10:
-        return 1/3
-    else:
+    if x < 1/10:
+#         return 0
         return Henrick_function(x, 1/3)
+    elif x < 7/16:
+        return 1/3
+    elif x < 9/10:
+        if k == 0:
+            return 2/5
+        if k == 1:
+            return 1/5
+        if k == 2:
+            return 2/5
+    else:
+#         return 1
+        return Henrick_function(x, 1/3)
+    # if x > 1/10 and x < 9/10:
+    #     return 1/3
+    # else:
+    #     return Henrick_function(x, 1/3)
 
 resolution = 10000
     
@@ -482,7 +482,7 @@ def create_simulation(API, equation_class, WENO, network=None, compile_flag=True
         u  = (  u + 2*u2 - 2*Δt*equation.DerivadaEspacial(u2, Δx, fronteira)) / 3.0
         return u
 
-    def Get_weights(U, AdicionaGhostPoints):
+    def Get_weights(U, Δx, AdicionaGhostPoints):
 
         U = AdicionaGhostPoints(U, API)
 

@@ -1,6 +1,7 @@
 # Código para implementar o WENO-Z utilizando o tensorflow
 # Importando os módulos que serão utilizados
 
+from sympy import beta
 import tensorflow as tf
 import tensorflow.keras as k
 import numpy as np
@@ -320,57 +321,59 @@ def Continuous_case(β,δ,API,p=2):
     α    = API.matmul((1 + (τ/(β + ɛ))**p), B)
     return α
 
-def create_simulation(API,equation_class,WENO,network=None,compile_flag=True,p=2):
+class simulation:
+    def __init__(self,API,equation_class,WENO,network=None,p=2):
+        self.equation=equation_class(API, WENO, network, p)
+        self.API=API
+        self.WENO=WENO
+        self.network=network
+        self.p=p
 
-    equation=equation_class(API, WENO, network, p)
-    
-    def Sim(u, t_final, Δx, CFL, fronteira):    
-        t = 0.0*equation.maximum_speed(u) # Instante de tempo incial para a computação
-        while API.any(t < t_final):
-            Λ  = equation.maximum_speed(u)
+        self.Sim=API.function(self.Sim_graph)
+        self.Sim_step=API.function(self.Sim_step_graph)
+        self.Get_weights=API.function(self.Get_weights_graph)
+
+        self.DerivadaEspacial_graph=equation.DerivadaEspacial
+        self.DerivadaEspacial=API.function(self.DerivadaEspacial_graph)
+    def Sim_graph(self,u, t_final, Δx, CFL, fronteira):    
+        t = 0.0*self.equation.maximum_speed(u) # Instante de tempo incial para a computação
+        while self.API.any(t < t_final):
+            Λ  = self.equation.maximum_speed(u)
 
             Δt = Δx*CFL/Λ  
-            Δt = API.where(t + Δt > t_final, t_final - t, Δt)
+            Δt = self.API.where(t + Δt > t_final, t_final - t, Δt)
 
-            u=Sim_step(u, Δt, Δx, fronteira)
+            u=self.Sim_step_graph(u, Δt, Δx, fronteira)
             
             t  = t + Δt # Avançando no tempo
         return u
-    
-    def Sim_step(u, Δt, Δx, fronteira):
-        u1 = u - Δt*equation.DerivadaEspacial(u, Δx, fronteira)
-        u2 = (3*u + u1 - Δt*equation.DerivadaEspacial(u1, Δx, fronteira)) / 4.0
-        u  = (u + 2*u2 - 2*Δt*equation.DerivadaEspacial(u2, Δx, fronteira)) / 3.0
+    def Sim_step_graph(self,u, Δt, Δx, fronteira):
+        u1 = u - Δt*self.equation.DerivadaEspacial(u, Δx, fronteira)
+        u2 = (3*u + u1 - Δt*self.equation.DerivadaEspacial(u1, Δx, fronteira)) / 4.0
+        u  = (u + 2*u2 - 2*Δt*self.equation.DerivadaEspacial(u2, Δx, fronteira)) / 3.0
         return u
+    def Get_weights_graph(self,U,AdicionaGhostPoints):
 
+        U = AdicionaGhostPoints(U,self.API)
 
-    def Get_weights(U,AdicionaGhostPoints):
-
-        U = AdicionaGhostPoints(U,API)
-
-        if network is not None:
-            δ = network(U)
-            δ = slicer(δ,3,API)
+        if self.network is not None:
+            δ = self.network(U)
+            δ = slicer(δ,3,self.API)
         else:
             δ=1-0.1
         
-        U = slicer(U,5,API)
+        U = slicer(U,5,self.API)
 
         # Calcula os indicadores de suavidade locais
-        u = API.repeat(API.expand_dims(U,axis=-2),3, axis=-2)
-        u = API.expand_dims(u,axis=-2)
+        u = self.API.repeat(API.expand_dims(U,axis=-2),3, axis=-2)
+        u = self.API.expand_dims(u,axis=-2)
 
-        β = API.sum((u * API.matmul(u, A))[...,0,:], axis=-1)
-        α = WENO(β,δ,API)
-        soma = API.sum(α, axis=-1, keepdims=True)
+        β = self.API.sum((u * API.matmul(u, A))[...,0,:], axis=-1)
+        α = self.WENO(β,δ,self.API)
+        soma = self.API.sum(α, axis=-1, keepdims=True)
         ω    = α / soma
 
         return ω,α,β,δ
-    
-    if compile_flag:
-        return API.function(Sim), API.function(Sim_step), API.function(equation.DerivadaEspacial), API.function(Get_weights)
-    else:
-        return Sim, Sim_step, equation.DerivadaEspacial, Get_weights
     
 class WENO(k.layers.Layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
@@ -387,7 +390,11 @@ class WENO(k.layers.Layer):
         --------------------------------------------------------------------------------------
         """
         super(WENO, self).__init__(name='WENO_layer',dtype=float_pres) # Chamando o inicializador da superclasse
-        self.Sim, self.Sim_step, self.DerivadaEspacial, self.Get_weights=create_simulation(API_TensorFlow,flux_calc,WENO_method,network=self.network_graph,compile_flag=False,p=p)
+        self.simulation=simulation(API_TensorFlow,flux_calc,WENO_method,network=self.network_graph,p=p)
+
+        self.Sim, self.Sim_step, self.DerivadaEspacial, self.Get_weights=self.simulation.Sim, self.simulation.Sim_step, self.simulation.DerivadaEspacial, self.simulation.Get_weights
+        self.Sim_graph, self.Sim_step_graph, self.DerivadaEspacial_graph, self.Get_weights_graph=self.simulation.Sim_graph, self.simulation.Sim_step_graph, self.simulation.DerivadaEspacial_graph, self.simulation.Get_weights_graph
+
         self.regul_weight=regul_weight
         self.ativ_func=ativ_func
         if (conv_size-1)%2==0:
@@ -455,7 +462,7 @@ class WENO_temporal(WENO):
         self.fronteira=fronteira
         
     def call(self, inpt, mask=None):
-        return self.Sim_step(inpt,self.Δt, self.Δx, self.fronteira)
+        return self.Sim_step_graph(inpt,self.Δt, self.Δx, self.fronteira)
     
 class WENO_espacial(WENO):
     """Criando uma camada de rede neural cuja superclasse é a camada
@@ -476,7 +483,7 @@ class WENO_espacial(WENO):
         self.fronteira=fronteira
         
     def call(self, inpt, mask=None):
-        return self.DerivadaEspacial(inpt,self.Δx, self.fronteira)
+        return self.DerivadaEspacial_graph(inpt,self.Δx, self.fronteira)
 
 
 class WENO_temporal_Z_plus(WENO_temporal):
