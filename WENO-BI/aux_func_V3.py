@@ -5,6 +5,7 @@ import tensorflow as tf
 import tensorflow.keras as k
 import numpy as np
 from numpy import pi
+from scipy.interpolate import BPoly
 
 import API_Numpy
 import API_TensorFlow
@@ -43,8 +44,6 @@ A = np.expand_dims(A, axis=0)
 B = np.asarray([[1,0,0],[0,6,0],[0,0,3]], dtype=float_pres)/10                # Matriz B
 C = np.asarray([[2,-7,11,0,0],[0,-1,5,2,0],[0,0,2,5,-1]], dtype=float_pres)/6 # Matriz C
 C = np.transpose(C)
-
-
 
 def FronteiraFixa(U, API, n=3):
     """
@@ -140,32 +139,65 @@ def WENO_Z_plus(β, δ, API, Δx, mapping, map_function, p=2):
     
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
-    
+
     # Calcula os pesos do WENO-Z+
     γ = (τ + ɛ)/(β + ɛ)
-    λ = (1 + γ**p+(Δx**(2/3))/γ)
+    λ = (1 + γ**p + (Δx**(2/3))/γ)
     α = mapping(λ, API, map_function)
-    
+
+    return α
+
+def WENO_Z_pm(β, δ, API, Δx, mapping, map_function, p=2):
+
+    # Calcula o indicador de suavidade global
+    τ = API.abs(β[...,0:1] - β[...,2:3])
+
+    # Calcula os pesos do WENO-Z+
+    γ = (τ + ɛ)/(β + ɛ)
+    λ = (1 + γ**p)
+    α = mapping(λ, API, map_function)
+    α = α + API.matmul((Δx**(2/3))/γ, B)
+
     return α
     
 null_mapping = lambda λ, API, map_function: API.matmul(λ, B)
     
 def post_mapping(λ, API, map_function):
-    
+
     α    = API.matmul(λ, B)
     soma = API.sum(α, axis=-1, keepdims=True)
     ω    = α / soma
     α    = map_function(ω, API)
-    
+
     return α
 
 def pre_mapping(λ, API, map_function):
-    
+
     soma = API.sum(λ, axis=-1, keepdims=True)
     ω    = λ / soma
     α    = map_function(ω, API)
     α    = API.matmul(α, B)
-    
+
+    return α
+
+def post_inv_mapping(λ, API, map_function):
+
+    α    = API.matmul(λ, B)
+    soma = API.sum(α, axis=-1, keepdims=True)
+    ω    = α / soma
+    α    = map_function(ω, API)
+    α    = α * soma
+
+    return α
+
+def pre_inv_mapping(λ, API, map_function):
+
+    soma = API.sum(λ, axis=-1, keepdims=True)
+    ω    = λ / soma
+    α    = map_function(ω, API)
+    α    = API.matmul(α, B)
+    α    = α * soma
+
     return α
 
 Henrick_function = lambda ω, d: ω*(d + d**2 - 3*d*ω + ω**2)/(d**2 + ω*(1-2*d))
@@ -193,25 +225,45 @@ def Hong_mapping(ω, API):
     return α
 
 def function_BI(x, k):
-#     if x < 1/10:
-# #         return 0
-#         return Henrick_function(x, 1/3)
-#     elif x < 7/16:
-#         return 1/3
-#     elif x < 9/10:
-#         if k == 0:
-#             return 2/5
-#         if k == 1:
-#             return 1/5
-#         if k == 2:
-#             return 2/5
-#     else:
-# #         return 1
-#         return Henrick_function(x, 1/3)
-    if x > 1/10 and x < 9/10:
-        return 1/3
-    else:
+    
+#     xi  = [0, 1/3, 1/2, 1]
+#     aux1 =  tf.math.tan(pi*4/10)
+#     aux2 =  tf.math.tan(pi*2/6)
+    
+#     if k == 0:
+#         yi = [[0, aux1, 0], [1/3, 0, 0], [(2/5)*(5/3), 0, 0], [1, aux2, 0]]
+#     if k == 1:
+#         yi = [[0, aux1, 0], [1/3, 0, 0], [(1/5)*(5/3), 0, 0], [1, aux2, 0]]
+#     if k == 2:
+#         yi = [[0, aux1, 0], [1/3, 0, 0], [(2/5)*(5/3), 0, 0], [1, aux2, 0]]
+        
+#     f = BPoly.from_derivatives(
+#         xi = xi,
+#         yi = yi
+#     )
+    
+#     return f(x)
+    
+    if x < 1/10:
+#         return 0
         return Henrick_function(x, 1/3)
+    elif x < 7/16:
+        return 1/3
+    elif x < 9/10:
+        if k == 0:
+            return 2/5
+        if k == 1:
+            return 1/5
+        if k == 2:
+            return 2/5
+    else:
+#         return 1
+        return Henrick_function(x, 1/3)
+
+#     if x > 1/10 and x < 9/10:
+#         return 1/3
+#     else:
+#         return Henrick_function(x, 1/3)
 
 resolution = 10000
     
@@ -228,6 +280,10 @@ def discrete_map(function):
 vetor_BI_0 = discrete_map(lambda x: function_BI(x, k=0))
 vetor_BI_1 = discrete_map(lambda x: function_BI(x, k=1))
 vetor_BI_2 = discrete_map(lambda x: function_BI(x, k=2))
+
+# vetor_BI_0 = function_BI(tf.range(0.0, resolution)/resolution, k=0)
+# vetor_BI_1 = function_BI(tf.range(0.0, resolution)/resolution, k=1)
+# vetor_BI_2 = function_BI(tf.range(0.0, resolution)/resolution, k=2)
 
 def BI_mapping(ω, API):
     
@@ -380,7 +436,7 @@ class euler_equation(equation):
         U = Q1/Q0
         P = self.Pressure(Q)
         A = self.API.sqrt(γ*P/Q0) # Sound speed
-        H = (Q2 + P)/Q0    # Enthalpy
+        H = (Q2 + P)/Q0           # Enthalpy
         h = 1/(2*H - U**2)
         
         ones_ref = self.API.ones(self.API.shape(U), dtype=U.dtype)
@@ -410,10 +466,13 @@ class euler_equation(equation):
         return self.API.stack([U-A, U, U+A], axis=-2)
 
     def maximum_speed(self,U):
-        eig_val = self.API.abs(self.Eigenvalues(U))
-        return self.API.max(self.API.max(eig_val, axis=-1, keepdims=True), axis=-2, keepdims=True)
 
-    def ReconstructedFlux(self, F, Q, M):
+        eig_val = self.API.abs(self.Eigenvalues(U))
+        M       = self.API.max(eig_val, axis=(-1, -2), keepdims=True)
+        
+        return M
+
+    def ReconstructedFlux(self, F, Q, M, Δx):
         
         M = self.API.expand_dims(M, axis=-3)
         F_plus  = (F + M*Q)/2
@@ -449,7 +508,7 @@ class euler_equation(equation):
         G = Λ*W                                               # The flux for the characteristic variables is Λ * L*Q
         
 #         M = M[2:N-3]
-        G_half = self.ReconstructedFlux(G, W, M)
+        G_half = self.ReconstructedFlux(G, W, M, Δx)
         F_half = self.API.einsum('...vn,...uvn -> ...un', G_half, R) # Brings back to conservative variables
         
         return (F_half[...,1:] - F_half[...,:-1])/Δx # Derivative of Flux
@@ -482,7 +541,7 @@ def create_simulation(API, equation_class, WENO, network=None, compile_flag=True
         u  = (  u + 2*u2 - 2*Δt*equation.DerivadaEspacial(u2, Δx, fronteira)) / 3.0
         return u
 
-    def Get_weights(U, AdicionaGhostPoints):
+    def Get_weights(U, Δx, AdicionaGhostPoints):
 
         U = AdicionaGhostPoints(U, API)
 
@@ -495,10 +554,18 @@ def create_simulation(API, equation_class, WENO, network=None, compile_flag=True
         U = slicer(U, 5, API)
 
         # Calcula os indicadores de suavidade locais
-        u = API.repeat(API.expand_dims(U, axis=-2), 3, axis=-2)
-        u = API.expand_dims(u, axis=-2)
+#         u = API.repeat(API.expand_dims(U, axis=-2), 3, axis=-2)
+#         u = API.expand_dims(u, axis=-2)
 
-        β = API.sum((u * API.matmul(u, A))[...,0,:], axis=-1)
+        u = U[:]
+    
+        β0 = API.square( 1/2.0*u[...,0] - 2*u[...,1] + 3/2.0*u[...,2]) + 13/12.0*API.square(u[...,0] - 2*u[...,1] + u[...,2])
+        β1 = API.square(-1/2.0*u[...,1]              + 1/2.0*u[...,3]) + 13/12.0*API.square(u[...,1] - 2*u[...,2] + u[...,3])
+        β2 = API.square(-3/2.0*u[...,2] + 2*u[...,3] - 1/2.0*u[...,4]) + 13/12.0*API.square(u[...,2] - 2*u[...,3] + u[...,4])
+        
+        β = API.stack([β0, β1, β2], axis=-1)
+        
+#         β = API.sum((u * API.matmul(u, A))[...,0,:], axis=-1)
         α = WENO(β, δ, API, Δx, mapping, map_function)
         soma = API.sum(α, axis=-1, keepdims=True)
         ω    = α / soma
