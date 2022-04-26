@@ -75,7 +75,12 @@ def create_dataset(n,poly_grade,seno_ampli,gauss_var,Δx,Δt,Total_time,granul_r
     y_list=[]
 
     # Criando funções base
-    if poly_grade!=False:
+    count_funcs=sum([i==0 for i in (seno_ampli,gauss_var)])
+    if count_funcs==0:
+        n*=3
+    elif count_funcs==1:
+        n=int(np.floor(n*1.5))
+    if True:#poly_grade!=False:
         k=poly_grade+1
         pesos=np.random.uniform(size=[n,k],low=-1,high=1)
         ordem=np.floor(np.random.uniform(size=[n,1],low=1,high=k))+np.asarray([range(k)])
