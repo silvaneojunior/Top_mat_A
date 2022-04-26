@@ -5,7 +5,8 @@ import os
 from aux_func_V3 import *
 
 gpus= tf.config.experimental.list_physical_devices('GPU') # Listando as placas de vídeo
-tf.config.experimental.set_memory_growth(gpus[0], True)   # Selecionando a primeira GPU e configurando
+if len(gpus)>0:
+    tf.config.experimental.set_memory_growth(gpus[0], True)   # Selecionando a primeira GPU e configurando
 
 def load_model(path,equation=None,WENO_method=None,conv_size=None,regul_weight=None,p=None,ativ_func=None):
     with open(path+'/config.cfg','rb') as file:
@@ -54,7 +55,7 @@ def save_dataset(path,data_temporal,data_spatial,data_base,Δx,Δt,CFL,fronteira
                 'equation':     equation}
     with open(path+'.bkp','wb') as file:
         dill.dump(data_dic,file)
-    with open(path+'.cfg','w') as file:
+    with open(path+'.cfg','w',encoding="utf-8") as file:
         file.writelines(f"'Δx': {Δx}\n")
         file.writelines(f"'Δt': {Δt}\n")
         file.writelines(f"'CFL': {CFL}\n")
@@ -65,7 +66,7 @@ def save_dataset(path,data_temporal,data_spatial,data_base,Δx,Δt,CFL,fronteira
 def load_dataset(path):
     with open(path+'.bkp','rb') as file:
         data_dic=dill.load(file)
-    with open(path+'.cfg','r') as file:
+    with open(path+'.cfg','r',encoding="utf-8") as file:
         config=file.read()
     print(config)
     return data_dic['data_temporal'],data_dic['data_spatial'],data_dic['data_base'],data_dic['Δx'],data_dic['Δt'],data_dic['CFL'],data_dic['fronteira'],data_dic['equation']
