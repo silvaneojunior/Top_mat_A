@@ -8,7 +8,7 @@ class WENO_layer(k.layers.Layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,equation,WENO_method,conv_size=5,regul_weight=0,p=2,ativ_func=tf.nn.sigmoid):
+    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,p=2,ativ_func=tf.nn.sigmoid):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -31,6 +31,11 @@ class WENO_layer(k.layers.Layer):
 
         self.Sim, self.Sim_step, self.DerivadaEspacial, self.Get_weights=self.simulation.Sim, self.simulation.Sim_step, self.simulation.DerivadaEspacial, self.simulation.Get_weights
         self.Sim_graph, self.Sim_step_graph, self.DerivadaEspacial_graph, self.Get_weights_graph=self.simulation.Sim_graph, self.simulation.Sim_step_graph, self.simulation.DerivadaEspacial_graph, self.simulation.Get_weights_graph
+
+        if WENO_type=='temporal':
+            self.exec=self.Sim_step_graph
+        elif WENO_type=='spatial':
+            self.exec=lambda U, Δt, Δx, AdicionaGhostPoints: self.DerivadaEspacial_graph(U, Δx, AdicionaGhostPoints)
 
         self.regul_weight=regul_weight
         self.ativ_func=ativ_func
@@ -77,7 +82,7 @@ class WENO_layer(k.layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
     def call(self,u, Δt, Δx, fronteira):
-        return self.Sim_step_graph(u, Δt, Δx, fronteira)
+        return self.exec(u, Δt, Δx, fronteira)
 
 class WENO_Z_plus(WENO_layer):
     def network_graph(self, x):

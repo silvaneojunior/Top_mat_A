@@ -85,7 +85,7 @@ def create_compara_plot(x,values,labels,is_log=True,xlim=(-1,1),ylim=(10**-8,(10
         ax.legend()
 
 class compara_evolve:
-    def __init__(self,WENOs,Δx,malha,names,f_test,fronteira,CFL=0.5,xlim=(-1,1),ylim=(-0.1, 1.1),colors=['black','#ffaa55', '#55aaff'],shapes=['--','d','o']):
+    def __init__(self,WENOs,Δx,malha,names,f_test,fronteira,CFL=0.5,x_range=(-1,1),xlim=(-1,1),ylim=(-0.1, 1.1),use_cache=None,replace=False,colors=['black','#ffaa55', '#55aaff'],shapes=['--','d','o']):
 
         self.WENOs=WENOs
         self.malha=malha
@@ -96,6 +96,8 @@ class compara_evolve:
         self.CFL=CFL
         self.fronteira=fronteira
         self.names=names
+        self.use_cache=use_cache if use_cache is not None or self.replace else [False]*len(names)
+        self.replace=replace
 
         self.fig = plt.figure(1, constrained_layout=True, figsize=(6,6))
         self.ax=self.fig.add_subplot(1, 1, 1)
@@ -103,7 +105,7 @@ class compara_evolve:
         self.ax.set_ylim(*ylim)
 
         for j,name,color,shape in zip(malha,names,colors,shapes):
-            x, U_i  = create_f_points(f_test=f_test,Δx=Δx/j,xlim=xlim)
+            x, U_i  = create_f_points(f_test=f_test,Δx=Δx/j,xlim=x_range)
             self.U.append(U_i)
 
             self.ax.set_ylim(*ylim)
@@ -111,13 +113,16 @@ class compara_evolve:
         self.ax.legend()
         self.hfig = display(self.fig, display_id=True)
     def update(self,Δt):
-        for i,line,Sim,k in zip(range(len( self.names)),self.lines,self.WENOs,self.malha):
-            self.U[i] = Sim(self.U[i],
-                    np.float64(Δt),
-                    np.float64(self.Δx/k),
-                    np.float64(self.CFL),
-                    self.fronteira
-                        )
+        for i,line,Sim,k,use_cache in zip(range(len( self.names)),self.lines,self.WENOs,self.malha,self.use_cache):
+            if use_cache:
+                self.U[i] = self.cache[i][:,len(self.history)]
+            else:
+                self.U[i] = Sim(self.U[i],
+                        np.float64(Δt),
+                        np.float64(self.Δx/k),
+                        np.float64(self.CFL),
+                        self.fronteira
+                            )
             squeezed_u=np.squeeze(self.U[i])
                 
             # Exibindo graficamente os valores obtidos
@@ -132,13 +137,31 @@ class compara_evolve:
             os.mkdir(path+'/')
         if not(os.path.isdir(path+'/frames/')):
             os.mkdir(path+'/frames/')
+
+        
+        for index,flag_cache, name in zip(range(len(self.names)),self.use_cache,self.names):
+            if flag_cache:
+                if not(os.path.isfile(path+'/{}.mat'.format(name))):
+                    self.use_cache[index]=False
+
+        self.cache=[]
+        for flag_cache, name in zip(self.use_cache,self.names):
+            if flag_cache:
+                with open(path+'/{}.mat'.format(name),'rb') as file:
+                    self.cache.append(dill.load(file))
+            else:
+                self.cache.append(None)
+
         self.history=[]
         with img.get_writer(path+'/plot.gif', mode='I') as writer:
             for i in range(frames):
                 self.update(Δt)
-                self.history.append(self.U)
+                self.history.append(self.U[:])
                 plt.savefig(path+'/frames/{}.png'.format(str(i).zfill(len(str(frames)))))
                 image = img.imread(path+'/frames/{}.png'.format(str(i).zfill(len(str(frames)))))
                 writer.append_data(image)
-        with open(path+'/data.mat','wb') as file:
-            dill.dump(self.history,file)
+        for i,name in enumerate(self.names):
+            data_mat=[Ui[i] for Ui in self.history]
+            data_mat=np.stack(data_mat,1)
+            with open(path+'/{}.mat'.format(name),'wb') as file:
+                dill.dump(data_mat,file)
