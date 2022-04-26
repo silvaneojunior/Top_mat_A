@@ -19,7 +19,7 @@ def create_f_points(f_test,Δx,xlim=(-1,1),dtype='float64'):
     u = np.expand_dims(u, axis=0) # Acrescentando uma dimensão
     return x,u
 
-def get_inner_val(test_weno,u,fronteira):
+def get_inner_val(test_weno,u,Δx,fronteira):
     n_pontos=u.shape[1]
     ω_plot=np.zeros([len(test_weno),n_pontos,3])
     α_plot=np.zeros([len(test_weno),n_pontos,3])
@@ -27,7 +27,7 @@ def get_inner_val(test_weno,u,fronteira):
     δ_plot=np.zeros([len(test_weno),n_pontos,3])
 
     for i,weno in enumerate(test_weno):
-        ω,α,β,δ = weno.Get_weights(u,fronteira)
+        ω,α,β,δ = weno.Get_weights(u,Δx,fronteira)
 
         ω_plot[i] = np.squeeze(ω)
         α_plot[i] = np.squeeze(α)

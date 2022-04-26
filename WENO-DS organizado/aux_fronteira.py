@@ -1,8 +1,6 @@
 # Código para implementar o WENO-Z utilizando o tensorflow
 # Importando os módulos que serão utilizados
 
-from aux_network import *
-
 def FronteiraFixa(U,API,n=3):
     """
     Função que adicionada pontos na malha de acordo com a condição de fronteira

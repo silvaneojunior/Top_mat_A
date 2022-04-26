@@ -4,6 +4,8 @@ import tensorflow.keras as k
 import numpy as np
 from numpy import pi
 
+from aux_mapping import *
+
 import API_Numpy
 import API_TensorFlow
 
@@ -21,13 +23,16 @@ C = np.asarray([[2,-7,11,0,0],[0,-1,5,2,0],[0,0,2,5,-1]], dtype=float_pres)/6 # 
 C = np.transpose(C)
 
 class equation:
-    def __init__(self,API, WENO, network,p=2):
+    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2):
         self.API=API
         self.WENO=WENO
         self.network=network
         self.p=p
 
-    def Get_weights_graph(self,u,AdicionaGhostPoints=None):
+        self.mapping=mapping
+        self.map_function=map_function
+
+    def Get_weights_graph(self,u,Δx,AdicionaGhostPoints=None):
 
         if AdicionaGhostPoints is not None:
             u = AdicionaGhostPoints(u,self.API,n=2)
@@ -51,22 +56,22 @@ class equation:
         
         β = self.API.stack([β0, β1, β2], axis=-1)
 
-        α = self.WENO(β,δ,self.API)
+        α = self.WENO(β,δ,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function)
         soma = self.API.sum(α, axis=-1, keepdims=True)
         ω    = α / soma
 
         return ω,α,β,δ
 
-    def ReconstructionMinus(self,u):
-        ω,α,β,δ=self.Get_weights_graph(u)
+    def ReconstructionMinus(self,u,Δx):
+        ω,α,β,δ=self.Get_weights_graph(u,Δx)
         # Calcula os fhat em cada subestêncil
         fhat = self.API.matmul(u, C)
         # Calcula o fhat do estêncil todo
         fhat = self.API.sum(ω * fhat, axis=-1)
         return fhat
 
-    def ReconstructionPlus(self,u):
-        fhat = self.ReconstructionMinus(self.API.reverse(u,axis=[-1]))
+    def ReconstructionPlus(self,u,Δx):
+        fhat = self.ReconstructionMinus(self.API.reverse(u,axis=[-1]),Δx)
         return fhat
         
     def flux_sep(self,U):
@@ -78,8 +83,8 @@ class equation:
         f_plus,f_minus=self.flux_sep(U)
 
         # Aplicar WENO em cada variável característica separadamente para depois juntar
-        f_half_minus = self.ReconstructionMinus(f_plus[...,:-1]) 
-        f_half_plus  = self.ReconstructionPlus( f_minus[...,1:])
+        f_half_minus = self.ReconstructionMinus(f_plus[...,:-1],Δx) 
+        f_half_plus  = self.ReconstructionPlus( f_minus[...,1:],Δx)
         Fhat         = (f_half_minus + f_half_plus)
 
         # Calculando uma estimava da derivada a partir de diferenças finitas

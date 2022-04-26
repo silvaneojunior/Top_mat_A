@@ -3,12 +3,13 @@ import tensorflow.keras as k
 import numpy as np
 
 from aux_weno import *
+from aux_fronteira import *
 
 class WENO_layer(k.layers.Layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,p=2,ativ_func=tf.nn.sigmoid):
+    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ativ_func=tf.nn.sigmoid):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -19,14 +20,16 @@ class WENO_layer(k.layers.Layer):
         --------------------------------------------------------------------------------------
         """
         super(WENO_layer, self).__init__(name='WENO_layer',dtype=float_pres) # Chamando o inicializador da superclasse
-        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p)
+        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,mapping=mapping, map_function=map_function)
         self.config={
             'equation':equation,
             'WENO_method':WENO_method,
             'conv_size':conv_size,
             'regul_weight':regul_weight,
             'p':p,
-            'ativ_func':ativ_func
+            'ativ_func':ativ_func,
+            'mapping':mapping,
+            'map_function':map_function
         }
 
         self.Sim, self.Sim_step, self.DerivadaEspacial, self.Get_weights=self.simulation.Sim, self.simulation.Sim_step, self.simulation.DerivadaEspacial, self.simulation.Get_weights
