@@ -1,15 +1,4 @@
-from sympy import beta
-import tensorflow as tf
-import tensorflow.keras as k
-import numpy as np
-from numpy import pi
-
 from aux_mapping import *
-
-import API_Numpy
-import API_TensorFlow
-
-float_pres='float64' # Definindo a precisão padrão para as análises
 
 """
 Obtendo matrizes de constantes convenintes para executar o WENO-Z

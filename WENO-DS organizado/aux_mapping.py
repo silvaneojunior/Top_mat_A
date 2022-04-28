@@ -1,3 +1,16 @@
+from aux_base import *
+
+"""
+Obtendo matrizes de constantes convenintes para executar o WENO-Z
+utilizando operações tensoriais, uma vez que permite a integração
+com o tensorflow
+"""
+ɛ = 10.0**(-40)
+
+B = np.asarray([[1,0,0],[0,6,0],[0,0,3]], dtype=float_pres)/10                # Matriz B
+C = np.asarray([[2,-7,11,0,0],[0,-1,5,2,0],[0,0,2,5,-1]], dtype=float_pres)/6 # Matriz C
+C = np.transpose(C)
+
 null_mapping = lambda λ, API, map_function: API.matmul(λ, B)
     
 def post_mapping(λ, API, map_function):
@@ -111,7 +124,7 @@ def discrete_map(function):
     for i in range(len(vetor)):
         vetor[i] = function(vetor[i]/vetor[-1])
         
-    vetor = tf.constant(vetor, dtype=float_pres)
+    vetor = np.asarray(vetor, dtype=float_pres)
     
     return vetor
 

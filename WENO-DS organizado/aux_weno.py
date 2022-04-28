@@ -1,5 +1,4 @@
 from aux_equation import *
-from aux_mapping import *
 
 def WENO_JS(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2):
     β=β*(δ+0.1)
@@ -62,7 +61,7 @@ def WENO_Z_pm_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lamb
 
 class simulation:
     def __init__(self,API,equation_class,WENO, mapping=null_mapping, map_function=lambda x:x,network=None,p=2):
-        self.equation=equation_class(API, WENO, network, p, mapping, map_function)
+        self.equation=equation_class(API, WENO, network=network,mapping=mapping, map_function=map_function, p=p)
         self.API=API
         self.WENO=WENO
         self.network=network

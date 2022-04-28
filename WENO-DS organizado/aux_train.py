@@ -2,13 +2,13 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import dill
 import os
-from aux_func_V3 import *
+from aux_network import *
 
 gpus= tf.config.experimental.list_physical_devices('GPU') # Listando as placas de vídeo
 if len(gpus)>0:
     tf.config.experimental.set_memory_growth(gpus[0], True)   # Selecionando a primeira GPU e configurando
 
-def load_model(path,equation=None,WENO_method=None,conv_size=None,regul_weight=None,p=None,ativ_func=None):
+def load_model(path,equation=None,WENO_method=None,conv_size=None,regul_weight=None,mapping=None,map_function=None,p=None,ativ_func=None):
     with open(path+'/config.cfg','rb') as file:
         config=dill.load(file)
     if equation is not None:
@@ -23,8 +23,19 @@ def load_model(path,equation=None,WENO_method=None,conv_size=None,regul_weight=N
         config['p']=p
     if ativ_func is not None:
         config['ativ_func']=ativ_func
+    if mapping is not None:
+        config['mapping']=mapping
+    if map_function is not None:
+        config['map_function']=map_function
 
-    Sim_layer = WENO_layer(equation=config['equation'],WENO_method=config['WENO_method'],conv_size=config['conv_size'],regul_weight=config['regul_weight'],p=config['p'],ativ_func=config['ativ_func'])
+    Sim_layer = WENO_layer(equation=config['equation'],
+                           WENO_method=config['WENO_method'],
+                           conv_size=config['conv_size'],
+                           regul_weight=config['regul_weight'],
+                           mapping=config['mapping'],
+                           map_function=config['map_function'],
+                           p=config['p'],
+                           ativ_func=config['ativ_func'])
 
     # Definindo o input da rede e o otimizador de treino
     input_x   = keras.layers.Input([200], dtype='float64')
@@ -37,11 +48,11 @@ def load_model(path,equation=None,WENO_method=None,conv_size=None,regul_weight=N
     Network.load_weights(path+'/network.h5')
     return Sim_layer
 
-def save_model(Network,path):
+def save_model(Network,config,path):
     if not(os.path.isdir(path+'/')):
         os.mkdir(path+'/')
     with open(path+'/config.cfg','wb') as file:
-        dill.dump(Network.layers[min([i for i,layer in enumerate(Network.layers) if layer.name=='WENO_layer'])].config,file)
+        dill.dump(config,file)
     Network.save_weights(path+'/network.h5')
 
 def save_dataset(path,data_temporal,data_spatial,data_base,Δx,Δt,CFL,fronteira,equation,seed=None):
