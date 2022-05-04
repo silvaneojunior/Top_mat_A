@@ -3,12 +3,13 @@ import tensorflow.keras as k
 import numpy as np
 
 from aux_weno import *
+from aux_fronteira import *
 
 class WENO_layer(k.layers.Layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,p=2,ativ_func=tf.nn.sigmoid):
+    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ativ_func=tf.nn.sigmoid):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -19,14 +20,16 @@ class WENO_layer(k.layers.Layer):
         --------------------------------------------------------------------------------------
         """
         super(WENO_layer, self).__init__(name='WENO_layer',dtype=float_pres) # Chamando o inicializador da superclasse
-        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p)
+        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,mapping=mapping, map_function=map_function)
         self.config={
             'equation':equation,
             'WENO_method':WENO_method,
             'conv_size':conv_size,
             'regul_weight':regul_weight,
             'p':p,
-            'ativ_func':ativ_func
+            'ativ_func':ativ_func,
+            'mapping':mapping,
+            'map_function':map_function
         }
 
         self.Sim, self.Sim_step, self.DerivadaEspacial, self.Get_weights=self.simulation.Sim, self.simulation.Sim_step, self.simulation.DerivadaEspacial, self.simulation.Get_weights
@@ -84,6 +87,28 @@ class WENO_layer(k.layers.Layer):
     def call(self,u, Δt, Δx, fronteira):
         return self.exec(u, Δt, Δx, fronteira)
 
+class WENO_temporal_layer(WENO_layer):
+    """Criando uma camada de rede neural cuja superclasse é a camada
+    do keras para integrar o algoritmo do WENO com a rede neural"""
+    
+    def __init__(self,equation,WENO_method,Δx,Δt,fronteira,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ativ_func=tf.nn.sigmoid):
+        """
+        Construtor da classe
+        --------------------------------------------------------------------------------------
+        t_final      (float): tamanho máximo da variação temporal
+        Δx           (float): distância espacial dos pontos na malha utilizada
+        CFL          (float): constante utilizada para determinar o tamanho da malha temporal
+        fronteira (function): função que determina o comportamento do algoritmo na fronteira
+        --------------------------------------------------------------------------------------
+        """
+        super(WENO_temporal_layer, self).__init__(equation,WENO_method,WENO_type,conv_size,regul_weight,mapping, map_function,p,ativ_func) # Chamando o inicializador da superclasse
+        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,mapping=mapping, map_function=map_function)
+        self.Δx=Δx
+        self.Δt=Δt
+        self.fronteira=fronteira
+    def call(self,u):
+        return self.exec(u, self.Δt, self.Δx, self.fronteira)
+
 class WENO_Z_plus(WENO_layer):
     def network_graph(self, x):
         """
@@ -127,6 +152,30 @@ class MES_OF(k.losses.Loss):
                 tf.where(y_pred > y_max, y_pred - y_max,  0) + \
                 tf.where(y_pred < y_min, y_min  - y_pred, 0),    
             axis=-1)
+        
+        return loss
+
+class MES_relative(k.losses.Loss):
+    """Criando uma função de custo cuja superclasse é a de funções de
+    custo do keras"""
+    def __init__(self,scale):
+        super(MES_relative,self).__init__()
+        self.scale=scale
+    
+    def call(self, y_true, y_pred):
+        """
+        Função que avalia o custo dado um valor de referência e um valor previsto
+        --------------------------------------------------------------------------
+        y_true (tensor): valor de referência
+        y_pred (tensor): valor predito
+        --------------------------------------------------------------------------
+        loss   (tensor): custo associado
+        --------------------------------------------------------------------------
+        """
+        y_true = tf.cast(y_true, y_pred.dtype) # Convertendo os tipos para evitar conflitos
+        
+        loss = tf.reduce_mean(
+            tf.math.square(y_pred - y_true), axis=-1)/self.scale
         
         return loss
 
