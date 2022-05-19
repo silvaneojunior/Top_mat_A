@@ -9,7 +9,7 @@ class WENO_layer(k.layers.Layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ativ_func=tf.nn.sigmoid):
+    def __init__(self, equation, WENO_method, WENO_type='temporal', conv_size=5, regul_weight=0, mapping=null_mapping, map_function=lambda x:x, p=2, ativ_func=tf.nn.sigmoid):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ class WENO_layer(k.layers.Layer):
         --------------------------------------------------------------------------------------
         """
         super(WENO_layer, self).__init__(name='WENO_layer',dtype=float_pres) # Chamando o inicializador da superclasse
-        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,mapping=mapping, map_function=map_function)
+        self.simulation=simulation(API_TensorFlow, equation, WENO_method, network=self.network_graph, p=p, mapping=mapping, map_function=map_function)
         self.config={
             'equation':equation,
             'WENO_method':WENO_method,
@@ -106,6 +106,7 @@ class WENO_temporal_layer(WENO_layer):
         self.Δx=Δx
         self.Δt=Δt
         self.fronteira=fronteira
+        
     def call(self,u):
         return self.exec(u, self.Δt, self.Δx, self.fronteira)
 
@@ -158,6 +159,7 @@ class MES_OF(k.losses.Loss):
 class MES_relative(k.losses.Loss):
     """Criando uma função de custo cuja superclasse é a de funções de
     custo do keras"""
+    
     def __init__(self,scale):
         super(MES_relative,self).__init__()
         self.scale=scale
@@ -225,6 +227,7 @@ class Conv1D(k.layers.Layer):
         self.kernel_size=kernel_size
         self.activation=activation
         self.pad=(kernel_size-1)//2
+        
     def build(self, input_shape):
         """
         Função para compor as camadas que constituem essa camada da rede neural
