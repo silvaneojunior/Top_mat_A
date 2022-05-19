@@ -1,3 +1,4 @@
+from regex import P
 from aux_equation import *
 
 def WENO_JS(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2):
@@ -96,4 +97,36 @@ class simulation:
         u1 = u - Δt*self.equation.DerivadaEspacial(u, Δx, fronteira)
         u2 = (3*u + u1 - Δt*self.equation.DerivadaEspacial(u1, Δx, fronteira)) / 4.0
         u  = (u + 2*u2 - 2*Δt*self.equation.DerivadaEspacial(u2, Δx, fronteira)) / 3.0
+        return u
+
+class simulation_2D(simulation):
+    def Sim_graph(self,u, t_final, Δx, Δy, CFL, fronteiraX, fronteiraY,Force): 
+        t = 0.0*self.equation.maximum_speed(u) # Instante de tempo incial para a computação
+        self.API.pretty_print(self.API.squeeze(t),end='\r')
+        Δ=min(Δx, Δy)
+        while self.API.any(t < t_final):
+            Λ  = self.equation.maximum_speed(u)
+
+            Δt = Δ*CFL/Λ  
+            Δt = self.API.where(t + Δt > t_final, t_final - t, Δt)
+            u=self.Sim_step_graph(u, Δt, Δx, Δy,fronteiraX, fronteiraY,Force)
+            t  = t + Δt # Avançando no tempo
+            self.API.pretty_print(self.API.squeeze(t),'                        ',end='\r')
+        return u
+    def Sim_step_graph(self,u, Δt, Δx, Δy,fronteiraX, fronteiraY,Force):
+
+        duX=self.equation.DerivadaEspacialX(u, Δx, fronteiraX)
+        duY=self.equation.DerivadaEspacialY(u, Δy, fronteiraY)
+
+        u1 = u - Δt*(duX+duY-Force(u))
+
+        du1X=self.equation.DerivadaEspacialX(u1, Δx, fronteiraX)
+        du1Y=self.equation.DerivadaEspacialY(u1, Δy, fronteiraY)
+
+        u2 = (3*u + u1 - Δt*(du1X+du1Y-Force(u1))) / 4.0
+
+        du2X=self.equation.DerivadaEspacialX(u2, Δx, fronteiraX)
+        du2Y=self.equation.DerivadaEspacialY(u2, Δy, fronteiraY)
+
+        u  = (u + 2*u2 - 2*Δt*(du2X+du2Y-Force(u2))) / 3.0
         return u
