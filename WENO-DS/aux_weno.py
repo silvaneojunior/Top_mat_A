@@ -101,13 +101,11 @@ class simulation:
 
 class simulation_2D(simulation):
     def Sim_graph(self,u, t_final, Δx, Δy, CFL, fronteiraX, fronteiraY,Force): 
-        uX=self.API.einsum('...ijk -> ...kij',u)  
-        t = 0.0*self.equation.maximum_speed(uX) # Instante de tempo incial para a computação
+        t = 0.0*self.equation.maximum_speed(u) # Instante de tempo incial para a computação
         self.API.pretty_print(self.API.squeeze(t),end='\r')
         Δ=min(Δx, Δy)
         while self.API.any(t < t_final):
-            uX=self.API.einsum('...ijk -> ...kij',u)  
-            Λ  = self.equation.maximum_speed(uX)
+            Λ  = self.equation.maximum_speed(u)
 
             Δt = Δ*CFL/Λ  
             Δt = self.API.where(t + Δt > t_final, t_final - t, Δt)
@@ -116,33 +114,19 @@ class simulation_2D(simulation):
             self.API.pretty_print(self.API.squeeze(t),'                        ',end='\r')
         return u
     def Sim_step_graph(self,u, Δt, Δx, Δy,fronteiraX, fronteiraY,Force):
-        uX=self.API.einsum('...ijk -> ...kij',u.copy())
-        uY=self.API.einsum('...ijk -> ...jik',u.copy())
-        uY[...,1,:],uY[...,2,:]=uY[...,2,:].copy(),uY[...,1,:].copy()
 
-        duX=self.API.einsum('...kij -> ...ijk',self.equation.DerivadaEspacial(uX, Δx, fronteiraX))
-        duY=self.API.einsum('...jik -> ...ijk',self.equation.DerivadaEspacial(uY, Δy, fronteiraY))
-        duY[...,1,:],duY[...,2,:]=duY[...,2,:].copy(),duY[...,1,:].copy()
+        duX=self.equation.DerivadaEspacialX(u, Δx, fronteiraX)
+        duY=self.equation.DerivadaEspacialY(u, Δy, fronteiraY)
 
         u1 = u - Δt*(duX+duY-Force(u))
 
-        u1X=self.API.einsum('...ijk -> ...kij',u1.copy())
-        u1Y=self.API.einsum('...ijk -> ...jik',u1.copy())
-        u1Y[...,1,:],u1Y[...,2,:]=u1Y[...,2,:].copy(),u1Y[...,1,:].copy()
-
-        du1X=self.API.einsum('...kij -> ...ijk',self.equation.DerivadaEspacial(u1X, Δx, fronteiraX))
-        du1Y=self.API.einsum('...jik -> ...ijk',self.equation.DerivadaEspacial(u1Y, Δy, fronteiraY))
-        du1Y[...,1,:],du1Y[...,2,:]=du1Y[...,2,:].copy(),du1Y[...,1,:].copy()
+        du1X=self.equation.DerivadaEspacialX(u1, Δx, fronteiraX)
+        du1Y=self.equation.DerivadaEspacialY(u1, Δy, fronteiraY)
 
         u2 = (3*u + u1 - Δt*(du1X+du1Y-Force(u1))) / 4.0
 
-        u2X=self.API.einsum('...ijk -> ...kij',u2.copy())
-        u2Y=self.API.einsum('...ijk -> ...jik',u2.copy())
-        u2Y[...,1,:],u2Y[...,2,:]=u2Y[...,2,:].copy(),u2Y[...,1,:].copy()
-
-        du2X=self.API.einsum('...kij -> ...ijk',self.equation.DerivadaEspacial(u2X, Δx, fronteiraX))
-        du2Y=self.API.einsum('...jik -> ...ijk',self.equation.DerivadaEspacial(u2Y, Δy, fronteiraY))
-        du2Y[...,1,:],du2Y[...,2,:]=du2Y[...,2,:].copy(),du2Y[...,1,:].copy()
+        du2X=self.equation.DerivadaEspacialX(u2, Δx, fronteiraX)
+        du2Y=self.equation.DerivadaEspacialY(u2, Δy, fronteiraY)
 
         u  = (u + 2*u2 - 2*Δt*(du2X+du2Y-Force(u2))) / 3.0
         return u
