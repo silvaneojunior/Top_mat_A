@@ -1,3 +1,4 @@
+from decimal import ROUND_HALF_DOWN
 from math import gamma
 from aux_mapping import *
 
@@ -122,7 +123,7 @@ class euler_equation(equation):
         
         U = Q1/Q0
         P = self.Pressure(Q)
-        A = self.API.sqrt(γ*P/Q0) # Sound speed
+        A = self.API.sqrt(self.γ*P/Q0) # Sound speed
         H = (Q2 + P)/Q0    # Enthalpy
         h = 1/(2*H - U**2)
         
@@ -191,12 +192,18 @@ class euler_equation(equation):
         return (F_half[...,1:] - F_half[...,:-1])/Δx # Derivative of Flux
 
 class euler_equation_2D(equation):
-    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,γ=1.4):
+    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,γ=5/3):
         super(euler_equation_2D,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p)
         self.γ=γ
     def Pressure(self,Q):
         Q1,Q2,Q3,Q4=self.API.unstack(Q,axis=-2)
-        return (self.γ-1)*(Q4 - (Q2**2+Q3**2) / (2*Q1))
+
+        a=self.γ-1.0
+        b=Q2**2+Q3**2
+        c=2*Q1
+        d=b/c
+        e=Q4-d
+        return a*e
 
     def ConservativeVariables(self,Q):
         ρ, u, v, p =self.API.unstack(Q,axis=-2)
@@ -221,8 +228,9 @@ class euler_equation_2D(equation):
         Qa=self.API.einsum('...ji->...ij',Qa)
 
         R, U, V, P = self.PrimitiveVariables(Qa)
+        #print(P)
         A = self.API.sqrt(self.γ*P/R)     # Sound speed
-        H = (Qa[...,1,:] + P)/R    # Enthalpy
+        H = (Qa[...,3,:] + P)/R    # Enthalpy
         h = 1/(2*H - U**2 - V**2)
 
         return U, V, A, H, h
@@ -233,7 +241,7 @@ class euler_equation_2D(equation):
         
         ones_ref=self.API.ones(self.API.shape(U),dtype=U.dtype)
         R1c=self.API.stack([ones_ref  ,U-A         ,V       ,H - U*A],axis=-2)
-        R2c=self.API.stack([ones_ref  ,U           ,V       ,U**2/2 ],axis=-2)
+        R2c=self.API.stack([ones_ref  ,U           ,V       ,(U**2+V**2)/2 ],axis=-2)
         R3c=self.API.stack([ones_ref*0,ones_ref*0  ,ones_ref,V ],axis=-2)
         R4c=self.API.stack([ones_ref  ,U+A         ,V       ,H + U*A],axis=-2)
         
@@ -241,7 +249,7 @@ class euler_equation_2D(equation):
         
         L1c=self.API.stack([U*I2A+Hh-0.5      , 2.0-2.0*Hh, -V        ,    Hh-0.5-U*I2A],axis=-2)
         L2c=self.API.stack([-Uh-I2A           , 2.0*Uh    , ones_ref*0,    I2A-Uh],axis=-2)
-        L3c=self.API.stack([-Vh               , 2.0*Vh    , ones_ref  ,    -Uh],axis=-2)
+        L3c=self.API.stack([-Vh               , 2.0*Vh    , ones_ref  ,    -Vh],axis=-2)
         L4c=self.API.stack([h                 ,-2*h       , ones_ref*0,    h],axis=-2)
         
         L = self.API.stack([L1c,L2c,L3c,L4c],axis=-2)
@@ -258,8 +266,8 @@ class euler_equation_2D(equation):
         R, U, V, P = self.PrimitiveVariables(Q)
         A = self.API.sqrt(self.γ*P/R)
 
-        max_U=np.stack([(U-A)**2, (U+A)**2],-1)
-        max_V=np.stack([(V-A)**2, (V+A)**2],-1)
+        max_U=self.API.stack([(U-A)**2, (U+A)**2],-1)
+        max_V=self.API.stack([(V-A)**2, (V+A)**2],-1)
 
         MU = self.API.max(max_U,axis=(-1,-2,-3),keepdims=True)
         MV = self.API.max(max_V,axis=(-1,-2,-3),keepdims=True)
