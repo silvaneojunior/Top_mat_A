@@ -117,16 +117,16 @@ class simulation_2D(simulation):
 
         duX=self.equation.DerivadaEspacialX(u, Δx, fronteiraX)
         duY=self.equation.DerivadaEspacialY(u, Δy, fronteiraY)
-
-        u1 = u - Δt*(duX+duY-Force(u))
+        
+        u1 = u - Δt*(duX+duY-Force(u,self.API))
 
         du1X=self.equation.DerivadaEspacialX(u1, Δx, fronteiraX)
         du1Y=self.equation.DerivadaEspacialY(u1, Δy, fronteiraY)
 
-        u2 = (3*u + u1 - Δt*(du1X+du1Y-Force(u1))) / 4.0
+        u2 = (3*u + u1 - Δt*(du1X+du1Y-Force(u1,self.API))) / 4.0
 
         du2X=self.equation.DerivadaEspacialX(u2, Δx, fronteiraX)
         du2Y=self.equation.DerivadaEspacialY(u2, Δy, fronteiraY)
 
-        u  = (u + 2*u2 - 2*Δt*(du2X+du2Y-Force(u2))) / 3.0
+        u  = (u + 2*u2 - 2*Δt*(du2X+du2Y-Force(u2,self.API))) / 3.0
         return u

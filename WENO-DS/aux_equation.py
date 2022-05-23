@@ -35,7 +35,7 @@ class equation:
         β2 = self.API.square(-3/2.0*u[...,2] + 2*u[...,3] - 1/2.0*u[...,4]) + 13/12.0*self.API.square(u[...,2] - 2*u[...,3] + u[...,4])
         
         β = self.API.stack([β0, β1, β2], axis=-1)
-
+        
         α = self.WENO(β,δ,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function)
         soma = self.API.sum(α, axis=-1, keepdims=True)
         ω    = α / soma

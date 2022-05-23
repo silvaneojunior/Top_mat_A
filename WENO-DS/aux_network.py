@@ -109,24 +109,24 @@ class WENO_temporal_layer(WENO_layer):
     def call(self,u):
         return self.exec(u, self.Δt, self.Δx, self.fronteira)
 
-class WENO_Z_plus(WENO_layer):
-    def network_graph(self, x):
-        """
-        Função utilizado para executar sucessivamente as camadas dessa camada 
-        da rede neural, passando o input de uma para a próxima
-        ----------------------------------------------------------------------
-        x (tensor): valor de entrada da rede
-        ----------------------------------------------------------------------
-        y (tensor): valor de saída da rede
-        ----------------------------------------------------------------------
-        """
-        y = tf.stack([x[...,2:]-x[...,:-2], x[...,2:]-2*x[...,1:-1]+x[...,:-2]], axis=-1)
-        # Percorrendo as camadas
-        for layer in self.layers:
+# class WENO_Z_plus(WENO_layer):
+#     def network_graph(self, x):
+#         """
+#         Função utilizado para executar sucessivamente as camadas dessa camada 
+#         da rede neural, passando o input de uma para a próxima
+#         ----------------------------------------------------------------------
+#         x (tensor): valor de entrada da rede
+#         ----------------------------------------------------------------------
+#         y (tensor): valor de saída da rede
+#         ----------------------------------------------------------------------
+#         """
+#         y = tf.stack([x[...,2:]-x[...,:-2], x[...,2:]-2*x[...,1:-1]+x[...,:-2]], axis=-1)
+#         # Percorrendo as camadas
+#         for layer in self.layers:
             
-            # Atualizando o valor de entrada para a próxima camada
-            y = layer(y)
-        return self.Δx**y
+#             # Atualizando o valor de entrada para a próxima camada
+#             y = layer(y)
+#         return self.Δx**y
     
 class MES_OF(k.losses.Loss):
     """Criando uma função de custo cuja superclasse é a de funções de
