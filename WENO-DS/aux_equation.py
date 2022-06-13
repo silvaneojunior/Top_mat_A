@@ -3,11 +3,12 @@ from math import gamma
 from aux_mapping import *
 
 class equation:
-    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2):
+    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
         self.API=API
         self.WENO=WENO
         self.network=network
         self.p=p
+        self.ε=ε
 
         self.mapping=mapping
         self.map_function=map_function
@@ -36,7 +37,7 @@ class equation:
         
         β = self.API.stack([β0, β1, β2], axis=-1)
         
-        α = self.WENO(β,δ,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function)
+        α = self.WENO(β,δ,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function,ε=self.ε)
         soma = self.API.sum(α, axis=-1, keepdims=True)
         ω    = α / soma
 
@@ -105,8 +106,8 @@ class diff_equation(equation):
         return f_plus,f_minus
 
 class euler_equation(equation):
-    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,γ=1.4):
-        super(euler_equation,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p)
+    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40,γ=1.4):
+        super(euler_equation,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p,ε=ε)
         self.γ=γ
     def Pressure(self,Q):
         Q0,Q1,Q2=self.API.unstack(Q,axis=-2)
@@ -192,8 +193,8 @@ class euler_equation(equation):
         return (F_half[...,1:] - F_half[...,:-1])/Δx # Derivative of Flux
 
 class euler_equation_2D(equation):
-    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,γ=5/3):
-        super(euler_equation_2D,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p)
+    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40,γ=5/3):
+        super(euler_equation_2D,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p,ε=ε)
         self.γ=γ
     def Pressure_1D(self,Q):
         Q1,Q2,Q3,Q4=self.API.unstack(Q,axis=-2)

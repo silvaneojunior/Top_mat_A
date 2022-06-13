@@ -9,7 +9,7 @@ class WENO_layer(k.layers.Layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ativ_func=tf.nn.sigmoid):
+    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40,ativ_func=tf.nn.sigmoid):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ class WENO_layer(k.layers.Layer):
         --------------------------------------------------------------------------------------
         """
         super(WENO_layer, self).__init__(name='WENO_layer',dtype=float_pres) # Chamando o inicializador da superclasse
-        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,mapping=mapping, map_function=map_function)
+        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,ε=ε,mapping=mapping, map_function=map_function)
         self.config={
             'equation':equation,
             'WENO_method':WENO_method,
@@ -91,7 +91,7 @@ class WENO_temporal_layer(WENO_layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,equation,WENO_method,Δx,Δt,fronteira,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ativ_func=tf.nn.sigmoid):
+    def __init__(self,equation,WENO_method,Δx,Δt,fronteira,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40,ativ_func=tf.nn.sigmoid):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -102,7 +102,7 @@ class WENO_temporal_layer(WENO_layer):
         --------------------------------------------------------------------------------------
         """
         super(WENO_temporal_layer, self).__init__(equation,WENO_method,WENO_type,conv_size,regul_weight,mapping, map_function,p,ativ_func) # Chamando o inicializador da superclasse
-        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,mapping=mapping, map_function=map_function)
+        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,ε=ε,mapping=mapping, map_function=map_function)
         self.Δx=Δx
         self.Δt=Δt
         self.fronteira=fronteira
