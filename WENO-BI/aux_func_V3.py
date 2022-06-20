@@ -10,14 +10,14 @@ from scipy.interpolate import BPoly
 import API_Numpy
 import API_TensorFlow
 
-float_pres='float64' # Definindo a precisão padrão para as análises
+float_pres = 'float64' # Definindo a precisão padrão para as análises
 
 """
 Obtendo matrizes de constantes convenintes para executar o WENO-Z
 utilizando operações tensoriais, uma vez que permite a integração
 com o tensorflow
 """
-ɛ = 10.0**(-40)
+ɛ = 10.0**(-20)
 
 a = np.asarray([[0.5],[-2],[3/2],[0],[0]])
 b = np.asarray([[1],[-2],[1],[0],[0]])
@@ -124,6 +124,8 @@ def WENO_JS(β, δ, API, Δx, mapping, map_function, p=2):
     return α
 
 def WENO_Z(β, δ, API, Δx, mapping, map_function, p=2):
+    
+    # ɛ = Δx**5
     
     # Calcula o indicador de suavidade global
     # β = β*(δ+0.1)
@@ -355,7 +357,7 @@ class equation:
         
         U = AdicionaGhostPoints(U, self.API) # Estende a malha de pontos de acordo com as condições de fronteira
 
-        f_plus,f_minus = self.flux_sep(U)
+        f_plus, f_minus = self.flux_sep(U)
 
         # Aplicar WENO em cada variável característica separadamente para depois juntar
         f_half_minus = self.ReconstructionMinus(f_plus[...,:-1], Δx) 
@@ -366,6 +368,19 @@ class equation:
         Fhat = (Fhat[...,1:] - Fhat[...,:-1]) / Δx
 
         return Fhat
+    
+    def ReconstructionFull(self, U, Δx, AdicionaGhostPoints):
+        
+        U = AdicionaGhostPoints(U, self.API) # Estende a malha de pontos de acordo com as condições de fronteira
+
+        f_plus,f_minus = self.flux_sep(U)
+
+        # Aplicar WENO em cada variável característica separadamente para depois juntar
+        f_half_minus = self.ReconstructionMinus(f_plus[...,:-1], Δx) 
+        f_half_plus  = self.ReconstructionPlus( f_minus[...,1:], Δx)
+        Fhat         = (f_half_minus + f_half_plus)
+
+        return Fhat[...,:-1]
 
 class transp_equation(equation):
     

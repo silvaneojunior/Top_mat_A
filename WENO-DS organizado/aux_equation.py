@@ -5,7 +5,7 @@ Obtendo matrizes de constantes convenintes para executar o WENO-Z
 utilizando operações tensoriais, uma vez que permite a integração
 com o tensorflow
 """
-ɛ = 10.0**(-40)
+ɛ = 10**(-40)
 
 B = np.asarray([[1,0,0],[0,6,0],[0,0,3]], dtype=float_pres)/10                # Matriz B
 C = np.asarray([[2,-7,11,0,0],[0,-1,5,2,0],[0,0,2,5,-1]], dtype=float_pres)/6 # Matriz C
@@ -88,7 +88,7 @@ class equation:
 class transp_equation(equation):
     
     def maximum_speed(self, U):
-        return self.API.cast(1, float_pres)
+        return self.API.cast(-1, float_pres)
     
     def flux_sep(self, U):
         

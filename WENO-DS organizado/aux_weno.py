@@ -88,7 +88,7 @@ class simulation:
         while self.API.any(t < t_final):
             Λ  = self.equation.maximum_speed(u)
 
-            Δt = Δx*CFL/Λ  
+            Δt = Δx*CFL/self.API.abs(Λ)  
             Δt = self.API.where(t + Δt > t_final, t_final - t, Δt)
 
             u = self.Sim_step_graph(u, Δt, Δx, fronteira)
