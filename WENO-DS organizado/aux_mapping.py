@@ -22,7 +22,7 @@ def post_mapping(λ, API, map_function):
     return α
 
 def pre_mapping(λ, API, map_function):
-
+    
     soma = API.sum(λ, axis=-1, keepdims=True)
     ω    = λ / soma
     α    = map_function(ω, API)

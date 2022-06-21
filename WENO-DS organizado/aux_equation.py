@@ -5,7 +5,7 @@ Obtendo matrizes de constantes convenintes para executar o WENO-Z
 utilizando operações tensoriais, uma vez que permite a integração
 com o tensorflow
 """
-ɛ = 10**(-40)
+ɛ = np.asarray(10**(-40), dtype=float_pres)
 
 B = np.asarray([[1,0,0],[0,6,0],[0,0,3]], dtype=float_pres)/10                # Matriz B
 C = np.asarray([[2,-7,11,0,0],[0,-1,5,2,0],[0,0,2,5,-1]], dtype=float_pres)/6 # Matriz C
@@ -39,12 +39,12 @@ class equation:
             δ = slicer(δ, 3, self.API)
             
         else:
-            δ=(u-u)[...,1:-1]+1-0.1
+            δ=self.API.real((u-u)[...,1:-1]+1-0.1)
         
         # Calcula os indicadores de suavidade locais
-        β0 = self.API.square( 1/2.0*u[...,0] - 2*u[...,1] + 3/2.0*u[...,2]) + 13/12.0*self.API.square(u[...,0] - 2*u[...,1] + u[...,2])
-        β1 = self.API.square(-1/2.0*u[...,1]              + 1/2.0*u[...,3]) + 13/12.0*self.API.square(u[...,1] - 2*u[...,2] + u[...,3])
-        β2 = self.API.square(-3/2.0*u[...,2] + 2*u[...,3] - 1/2.0*u[...,4]) + 13/12.0*self.API.square(u[...,2] - 2*u[...,3] + u[...,4])
+        β0 = self.API.square(self.API.abs( 1/2.0*u[...,0] - 2*u[...,1] + 3/2.0*u[...,2])) + 13/12.0*self.API.square(self.API.abs(u[...,0] - 2*u[...,1] + u[...,2]))
+        β1 = self.API.square(self.API.abs(-1/2.0*u[...,1]              + 1/2.0*u[...,3])) + 13/12.0*self.API.square(self.API.abs(u[...,1] - 2*u[...,2] + u[...,3]))
+        β2 = self.API.square(self.API.abs(-3/2.0*u[...,2] + 2*u[...,3] - 1/2.0*u[...,4])) + 13/12.0*self.API.square(self.API.abs(u[...,2] - 2*u[...,3] + u[...,4]))
         
         β = self.API.stack([β0, β1, β2], axis=-1)
         
@@ -88,7 +88,7 @@ class equation:
 class transp_equation(equation):
     
     def maximum_speed(self, U):
-        return self.API.cast(-1, float_pres)
+        return self.API.cast(1, float_pres)
     
     def flux_sep(self, U):
         
