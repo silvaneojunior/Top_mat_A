@@ -9,7 +9,7 @@ class WENO_layer(k.layers.Layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ativ_func=tf.nn.sigmoid):
+    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40,ativ_func=tf.nn.sigmoid):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ class WENO_layer(k.layers.Layer):
         --------------------------------------------------------------------------------------
         """
         super(WENO_layer, self).__init__(name='WENO_layer',dtype=float_pres) # Chamando o inicializador da superclasse
-        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,mapping=mapping, map_function=map_function)
+        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,ε=ε,mapping=mapping, map_function=map_function)
         self.config={
             'equation':equation,
             'WENO_method':WENO_method,
@@ -91,7 +91,7 @@ class WENO_temporal_layer(WENO_layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,equation,WENO_method,Δx,Δt,fronteira,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ativ_func=tf.nn.sigmoid):
+    def __init__(self,equation,WENO_method,Δx,Δt,fronteira,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40,ativ_func=tf.nn.sigmoid):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -102,31 +102,31 @@ class WENO_temporal_layer(WENO_layer):
         --------------------------------------------------------------------------------------
         """
         super(WENO_temporal_layer, self).__init__(equation,WENO_method,WENO_type,conv_size,regul_weight,mapping, map_function,p,ativ_func) # Chamando o inicializador da superclasse
-        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,mapping=mapping, map_function=map_function)
+        self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,ε=ε,mapping=mapping, map_function=map_function)
         self.Δx=Δx
         self.Δt=Δt
         self.fronteira=fronteira
     def call(self,u):
         return self.exec(u, self.Δt, self.Δx, self.fronteira)
 
-class WENO_Z_plus(WENO_layer):
-    def network_graph(self, x):
-        """
-        Função utilizado para executar sucessivamente as camadas dessa camada 
-        da rede neural, passando o input de uma para a próxima
-        ----------------------------------------------------------------------
-        x (tensor): valor de entrada da rede
-        ----------------------------------------------------------------------
-        y (tensor): valor de saída da rede
-        ----------------------------------------------------------------------
-        """
-        y = tf.stack([x[...,2:]-x[...,:-2], x[...,2:]-2*x[...,1:-1]+x[...,:-2]], axis=-1)
-        # Percorrendo as camadas
-        for layer in self.layers:
+# class WENO_Z_plus(WENO_layer):
+#     def network_graph(self, x):
+#         """
+#         Função utilizado para executar sucessivamente as camadas dessa camada 
+#         da rede neural, passando o input de uma para a próxima
+#         ----------------------------------------------------------------------
+#         x (tensor): valor de entrada da rede
+#         ----------------------------------------------------------------------
+#         y (tensor): valor de saída da rede
+#         ----------------------------------------------------------------------
+#         """
+#         y = tf.stack([x[...,2:]-x[...,:-2], x[...,2:]-2*x[...,1:-1]+x[...,:-2]], axis=-1)
+#         # Percorrendo as camadas
+#         for layer in self.layers:
             
-            # Atualizando o valor de entrada para a próxima camada
-            y = layer(y)
-        return self.Δx**y
+#             # Atualizando o valor de entrada para a próxima camada
+#             y = layer(y)
+#         return self.Δx**y
     
 class MES_OF(k.losses.Loss):
     """Criando uma função de custo cuja superclasse é a de funções de

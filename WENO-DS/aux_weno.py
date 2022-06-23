@@ -1,72 +1,73 @@
 from regex import P
 from aux_equation import *
 
-def WENO_JS(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2):
+def WENO_JS(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
     β=β*(δ+0.1)
     # Calcula os pesos do WENO-JS
-    λ = (1/(β + ɛ))**p
+    λ = (1/(β + ε))**p
     α = mapping(λ,API,map_function)
     return α
 
-def WENO_Z(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2):
+def WENO_Z(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
     # Calcula o indicador de suavidade global
     β=β*(δ+0.1)
     τ = API.abs(β[...,0:1] - β[...,2:3])
 
     # Calcula os pesos do WENO-Z
-    λ = 1 + (τ/(β + ɛ))**p
+    λ = 1 + (τ/(β + ε))**p
     α = mapping(λ,API,map_function)
     return α
 
-def WENO_Z_plus(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2):
+def WENO_Z_plus(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
     β=β*(δ+0.1)
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
     # Calcula os pesos do WENO-Z+
-    γ =(τ + ɛ)/(β + ɛ)
+    γ =(τ + ε)/(β + ε)
     λ=1 + γ**p+(Δx**(2/3))/γ
     α = mapping(λ,API,map_function)
     return α
 
-def WENO_Z_plus_net_expo(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2):
+def WENO_Z_plus_net_expo(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
     # Calcula os pesos do WENO-Z+
-    γ =(τ + ɛ)/(β + ɛ)
+    γ =(τ + ε)/(β + ε)
     λ=1 + γ**p+(Δx**δ)/γ
     α = mapping(λ,API,map_function)
     return α
 
-def WENO_Z_pm(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2):
+def WENO_Z_pm(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=1e-40):
     β=β*(δ+0.1)
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
 
     # Calcula os pesos do WENO-Z+
-    γ = (τ + ɛ)/(β + ɛ)
+    γ = (τ + ε)/(β + ε)
     λ = (1 + γ**p)
     α = mapping(λ, API, map_function)
     α = α + API.matmul((Δx**(2/3))/γ, B)
     return α
 
-def WENO_Z_pm_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2):
+def WENO_Z_pm_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=1e-40):
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
 
     # Calcula os pesos do WENO-Z+
-    γ = (τ + ɛ)/(β + ɛ)
+    γ = (τ + ε)/(β + ε)
     λ = (1 + γ**p)
     α = mapping(λ, API, map_function)
     α = α + API.matmul((Δx**(δ))/γ, B)
     return α
 
 class simulation:
-    def __init__(self,API,equation_class,WENO, mapping=null_mapping, map_function=lambda x:x,network=None,p=2):
-        self.equation=equation_class(API, WENO, network=network,mapping=mapping, map_function=map_function, p=p)
+    def __init__(self,API,equation_class,WENO, mapping=null_mapping, map_function=lambda x:x,network=None,p=2,ε=1e-40):
+        self.equation=equation_class(API, WENO, network=network,mapping=mapping, map_function=map_function, p=p,ε=1e-40)
         self.API=API
         self.WENO=WENO
         self.network=network
         self.p=p
+        self.ε=ε
 
         self.mapping=mapping
         self.map_function=map_function
@@ -117,16 +118,16 @@ class simulation_2D(simulation):
 
         duX=self.equation.DerivadaEspacialX(u, Δx, fronteiraX)
         duY=self.equation.DerivadaEspacialY(u, Δy, fronteiraY)
-
-        u1 = u - Δt*(duX+duY-Force(u))
+        
+        u1 = u - Δt*(duX+duY-Force(u,self.API))
 
         du1X=self.equation.DerivadaEspacialX(u1, Δx, fronteiraX)
         du1Y=self.equation.DerivadaEspacialY(u1, Δy, fronteiraY)
 
-        u2 = (3*u + u1 - Δt*(du1X+du1Y-Force(u1))) / 4.0
+        u2 = (3*u + u1 - Δt*(du1X+du1Y-Force(u1,self.API))) / 4.0
 
         du2X=self.equation.DerivadaEspacialX(u2, Δx, fronteiraX)
         du2Y=self.equation.DerivadaEspacialY(u2, Δy, fronteiraY)
 
-        u  = (u + 2*u2 - 2*Δt*(du2X+du2Y-Force(u2))) / 3.0
+        u  = (u + 2*u2 - 2*Δt*(du2X+du2Y-Force(u2,self.API))) / 3.0
         return u
