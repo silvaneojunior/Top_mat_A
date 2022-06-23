@@ -5,11 +5,6 @@ Obtendo matrizes de constantes convenintes para executar o WENO-Z
 utilizando operações tensoriais, uma vez que permite a integração
 com o tensorflow
 """
-ɛ = np.asarray(10**(-40), dtype=float_pres)
-
-B = np.asarray([[1,0,0],[0,6,0],[0,0,3]], dtype=float_pres)/10                # Matriz B
-C = np.asarray([[2,-7,11,0,0],[0,-1,5,2,0],[0,0,2,5,-1]], dtype=float_pres)/6 # Matriz C
-C = np.transpose(C)
 
 class equation:
     def __init__(self, API, WENO, network, mapping=null_mapping, map_function=lambda x:x, p=2):
@@ -23,7 +18,7 @@ class equation:
         self.map_function = map_function
 
     def Get_weights_graph(self, u, Δx, AdicionaGhostPoints=None):
-
+        
         if AdicionaGhostPoints is not None:
             u = AdicionaGhostPoints(u, self.API, n=2)
             u = slicer(u,5,self.API)
@@ -39,12 +34,12 @@ class equation:
             δ = slicer(δ, 3, self.API)
             
         else:
-            δ=self.API.real((u-u)[...,1:-1]+1-0.1)
+            δ=self.API.real((u-u)[...,1:-1]+const(1, self.API)-const(1, self.API)/const(10, self.API)
         
         # Calcula os indicadores de suavidade locais
-        β0 = self.API.square(self.API.abs( 1/2.0*u[...,0] - 2*u[...,1] + 3/2.0*u[...,2])) + 13/12.0*self.API.square(self.API.abs(u[...,0] - 2*u[...,1] + u[...,2]))
-        β1 = self.API.square(self.API.abs(-1/2.0*u[...,1]              + 1/2.0*u[...,3])) + 13/12.0*self.API.square(self.API.abs(u[...,1] - 2*u[...,2] + u[...,3]))
-        β2 = self.API.square(self.API.abs(-3/2.0*u[...,2] + 2*u[...,3] - 1/2.0*u[...,4])) + 13/12.0*self.API.square(self.API.abs(u[...,2] - 2*u[...,3] + u[...,4]))
+        β0 = self.API.square(self.API.abs( const(0.5, self.API)*u[...,0] - 2*u[...,1] + const(3, self.API)/2*u[...,2])) + const(13, self.API)/12*self.API.square(self.API.abs(u[...,0] - 2*u[...,1] + u[...,2]))
+        β1 = self.API.square(self.API.abs(-const(0.5, self.API)*u[...,1]              + const(0.5, self.API)*u[...,3])) + const(13, self.API)/12.0*self.API.square(self.API.abs(u[...,1] - 2*u[...,2] + u[...,3]))
+        β2 = self.API.square(self.API.abs(-const(3, self.API)/2.0*u[...,2] + 2*u[...,3] - const(0.5, self.API)*u[...,4])) + const(13, self.API)/12.0*self.API.square(self.API.abs(u[...,2] - 2*u[...,3] + u[...,4]))
         
         β = self.API.stack([β0, β1, β2], axis=-1)
         
@@ -114,15 +109,15 @@ class burgers_equation(equation):
         U = slicer(U, 6, self.API)
         
         # Setup para equação de Burguers
-        f_plus  = (U**2/2 + M*U) / 2  # Fluxo positivo
-        f_minus = (U**2/2 - M*U) / 2  # Fluxo negativo
+        f_plus  = (self.API.square(U)/2 + M*U) / 2  # Fluxo positivo
+        f_minus = (self.API.square(U)/2 - M*U) / 2  # Fluxo negativo
         
         return f_plus, f_minus
 
 class diff_equation(equation):
     
     def maximum_speed(self,U):
-        return 1
+        return const(1, self.API)
     
     def flux_sep(self,U):
 
@@ -132,8 +127,6 @@ class diff_equation(equation):
         
         return f_plus, f_minus
 
-# Dummy comment # Dummy comment of the dummy comment
-γ = 1.4
 
 class euler_equation(equation):
     
@@ -142,7 +135,7 @@ class euler_equation(equation):
         Q0, Q1, Q2 = self.API.unstack(Q, axis=-2)
         
         a = γ-1.0
-        b = Q1**2
+        b = self.API.square(Q1)
         c = 2*Q0
         d = b/c
         e = Q2-d
@@ -157,17 +150,17 @@ class euler_equation(equation):
         P = self.Pressure(Q)
         A = self.API.sqrt(γ*P/Q0) # Sound speed
         H = (Q2 + P)/Q0           # Enthalpy
-        h = 1/(2*H - U**2)
+        h = 1/(2*H - self.API.square(U))
         
         ones_ref = self.API.ones(self.API.shape(U), dtype=U.dtype)
         
         R1c = self.API.stack([ones_ref, U-A, H - U*A], axis=-2)
-        R2c = self.API.stack([ones_ref, U  , U**2/2 ], axis=-2)
+        R2c = self.API.stack([ones_ref, U  , self.API.square(U)/2 ], axis=-2)
         R3c = self.API.stack([ones_ref, U+A, H + U*A], axis=-2)
         
         R = self.API.stack([R1c, R2c, R3c], axis=-2)
         
-        L1c = self.API.stack([U/(2*A) + U**2*h/2, 2 - (2*H)*h, U**2*h/2 - U/(2*A)], axis=-2)
+        L1c = self.API.stack([U/(2*A) + self.API.square(U)*h/2, 2 - (2*H)*h, self.API.square(U)*h/2 - U/(2*A)], axis=-2)
         L2c = self.API.stack([-U*h - 1/(2*A)    , (2*U)*h    , 1/(2*A) - U*h     ], axis=-2)
         L3c = self.API.stack([h                 , -2*h       , h                 ], axis=-2)
         

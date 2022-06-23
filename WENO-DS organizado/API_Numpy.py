@@ -1,8 +1,9 @@
 from numpy import *
 
-concat = concatenate
-range  = arange
-gather = take
+constant = asarray
+concat   = concatenate
+range    = arange
+gather   = take
 
 def map_fn(fn, elems, dtype=None, parallel_iterations=None, back_prop=True, swap_memory=False, infer_shape=True, name=None, fn_output_signature=None):
     outs=[]

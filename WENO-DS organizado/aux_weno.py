@@ -1,14 +1,14 @@
 from aux_equation import *
 
 def WENO_JS(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2):
-    β = β*(δ+0.1)
+    β = β*(δ+const(1, API)/10)
     # Calcula os pesos do WENO-JS
     λ = (1/(β + ɛ))**p
     α = mapping(λ, API, map_function)
     return α
 
 def WENO_Z(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2):
-    β = β*(δ+0.1)
+    β = β*(δ+const(1, API)/10)
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
     # Calcula os pesos do WENO-Z
@@ -17,12 +17,12 @@ def WENO_Z(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2)
     return α
 
 def WENO_Zp(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2):
-    β = β*(δ+0.1)
+    β = β*(δ+const(1, API)/10)
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
     # Calcula os pesos do WENO-Z+
     γ = (τ + ɛ)/(β + ɛ)
-    λ = 1 + γ**p + (Δx**(2/3))/γ
+    λ = 1 + γ**p + (Δx**(const(2, API)/3))/γ
     α = mapping(λ, API, map_function)
     return α
 
@@ -36,7 +36,7 @@ def WENO_Zp_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lambda
     return α
 
 def WENO_ZC(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2):
-    β = β*(δ+0.1)
+    β = β*(δ+const(1, API)/10)
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
 
@@ -44,7 +44,7 @@ def WENO_ZC(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2
     γ = (τ + ɛ)/(β + ɛ)
     λ = (1 + γ**p)
     α = mapping(λ, API, map_function)
-    α = α + API.matmul((Δx**(2/3))/γ, B)
+    α = α + API.matmul((Δx**(const(2, API)/3))/γ, B)
     return α
 
 def WENO_ZC_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2):
