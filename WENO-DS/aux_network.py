@@ -106,6 +106,7 @@ class WENO_temporal_layer(WENO_layer):
         self.Δx=Δx
         self.Δt=Δt
         self.fronteira=fronteira
+        
     def call(self,u):
         return self.exec(u, self.Δt, self.Δx, self.fronteira)
 
@@ -158,6 +159,7 @@ class MES_OF(k.losses.Loss):
 class MES_relative(k.losses.Loss):
     """Criando uma função de custo cuja superclasse é a de funções de
     custo do keras"""
+    
     def __init__(self,scale):
         super(MES_relative,self).__init__()
         self.scale=scale
@@ -225,6 +227,7 @@ class Conv1D(k.layers.Layer):
         self.kernel_size=kernel_size
         self.activation=activation
         self.pad=(kernel_size-1)//2
+        
     def build(self, input_shape):
         """
         Função para compor as camadas que constituem essa camada da rede neural

@@ -2,7 +2,7 @@ from regex import P
 from aux_equation import *
 
 def WENO_JS(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
-    β=β*(δ+0.1)
+    β=β*(δ+const(1, API)/10)
     # Calcula os pesos do WENO-JS
     λ = (1/(β + ε))**p
     α = mapping(λ,API,map_function)
@@ -10,35 +10,33 @@ def WENO_JS(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1
 
 def WENO_Z(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
     # Calcula o indicador de suavidade global
-    β=β*(δ+0.1)
     τ = API.abs(β[...,0:1] - β[...,2:3])
-
     # Calcula os pesos do WENO-Z
-    λ = 1 + (τ/(β + ε))**p
-    α = mapping(λ,API,map_function)
+    λ = 1 + (τ/(β + ɛ))**p
+    α = mapping(λ, API, map_function)
     return α
 
-def WENO_Z_plus(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
-    β=β*(δ+0.1)
+def WENO_Zp(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=1e-40):
+    β = β*(δ+const(1, API)/10)
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
     # Calcula os pesos do WENO-Z+
-    γ =(τ + ε)/(β + ε)
-    λ=1 + γ**p+(Δx**(2/3))/γ
-    α = mapping(λ,API,map_function)
+    γ = (τ + ɛ)/(β + ɛ)
+    λ = 1 + γ**p + (Δx**(const(2, API)/3))/γ
+    α = mapping(λ, API, map_function)
     return α
 
-def WENO_Z_plus_net_expo(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
+def WENO_Zp_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=1e-40):
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
     # Calcula os pesos do WENO-Z+
-    γ =(τ + ε)/(β + ε)
-    λ=1 + γ**p+(Δx**δ)/γ
-    α = mapping(λ,API,map_function)
+    γ = (τ + ɛ)/(β + ɛ)
+    λ = 1 + γ**p+(Δx**δ)/γ
+    α = mapping(λ, API, map_function)
     return α
 
-def WENO_Z_pm(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=1e-40):
-    β=β*(δ+0.1)
+def WENO_ZC(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=1e-40):
+    β = β*(δ+const(1, API)/10)
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
 
@@ -46,10 +44,10 @@ def WENO_Z_pm(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p
     γ = (τ + ε)/(β + ε)
     λ = (1 + γ**p)
     α = mapping(λ, API, map_function)
-    α = α + API.matmul((Δx**(2/3))/γ, B)
+    α = α + API.matmul((Δx**(const(2, API)/3))/γ, B)
     return α
 
-def WENO_Z_pm_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=1e-40):
+def WENO_ZC_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=1e-40):
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
 
@@ -61,38 +59,44 @@ def WENO_Z_pm_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lamb
     return α
 
 class simulation:
-    def __init__(self,API,equation_class,WENO, mapping=null_mapping, map_function=lambda x:x,network=None,p=2,ε=1e-40):
-        self.equation=equation_class(API, WENO, network=network,mapping=mapping, map_function=map_function, p=p,ε=1e-40)
-        self.API=API
-        self.WENO=WENO
-        self.network=network
-        self.p=p
-        self.ε=ε
+    
+    def __init__(self, API, equation_class, WENO, mapping=null_mapping, map_function=lambda x:x, network=None, p=2,ε=1e-40):
+        
+        self.equation = equation_class(API, WENO, network=network, mapping=mapping, map_function=map_function, p=p,ε=1e-40)
+        self.API      = API
+        self.WENO     = WENO
+        self.network  = network
+        self.p        = p
+        self.ε        = ε
 
-        self.mapping=mapping
-        self.map_function=map_function
+        self.mapping      = mapping
+        self.map_function = map_function
 
-        self.Sim=API.function(self.Sim_graph)
-        self.Sim_step=API.function(self.Sim_step_graph)
+        self.Sim      = API.function(self.Sim_graph)
+        self.Sim_step = API.function(self.Sim_step_graph)
 
-        self.Get_weights_graph=self.equation.Get_weights_graph
-        self.Get_weights=API.function(self.Get_weights_graph)
+        self.Get_weights_graph = self.equation.Get_weights_graph
+        self.Get_weights       = API.function(self.Get_weights_graph)
 
-        self.DerivadaEspacial_graph=self.equation.DerivadaEspacial
-        self.DerivadaEspacial=API.function(self.DerivadaEspacial_graph)
-    def Sim_graph(self,u, t_final, Δx, CFL, fronteira):    
+        self.DerivadaEspacial_graph = self.equation.DerivadaEspacial
+        self.DerivadaEspacial       = API.function(self.DerivadaEspacial_graph)
+    
+    def Sim_graph(self, u, t_final, Δx, CFL, fronteira):    
+        
         t = 0.0*self.equation.maximum_speed(u) # Instante de tempo incial para a computação
-        self.API.pretty_print(self.API.squeeze(t),end='\r')
+        self.API.pretty_print(self.API.squeeze(t), end='\r')
+        
         while self.API.any(t < t_final):
             Λ  = self.equation.maximum_speed(u)
 
-            Δt = Δx*CFL/Λ  
+            Δt = Δx*CFL/self.API.abs(Λ)  
             Δt = self.API.where(t + Δt > t_final, t_final - t, Δt)
 
-            u=self.Sim_step_graph(u, Δt, Δx, fronteira)
+            u = self.Sim_step_graph(u, Δt, Δx, fronteira)
+            t = t + Δt # Avançando no tempo
             
-            t  = t + Δt # Avançando no tempo
-            self.API.pretty_print(self.API.squeeze(t),end='\r')
+            self.API.pretty_print(self.API.squeeze(t), end='\r')
+        
         return u
     def Sim_step_graph(self,u, Δt, Δx, fronteira):
         u1 = u - Δt*self.equation.DerivadaEspacial(u, Δx, fronteira)
