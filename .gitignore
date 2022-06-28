@@ -2,8 +2,11 @@
 __pycache__/
 *.bck
 *.bkp
+*.png
+*.mat
 WENO-DS/Datasets/
 WENO-DS/imagens/
+WENO-DS/Testes/*
 WENO-DS/Modelos treinados/Sweeps/
 *.*/
 */wandb/
