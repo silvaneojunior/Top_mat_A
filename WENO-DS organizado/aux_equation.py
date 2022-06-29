@@ -34,7 +34,7 @@ class equation:
             δ = slicer(δ, 3, self.API)
             
         else:
-            δ=self.API.real((u-u)[...,1:-1]+const(1, self.API)-const(1, self.API)/const(10, self.API)
+            δ=self.API.real((u-u)[...,1:-1])+const(1, self.API)-const(1, self.API)/const(10, self.API)
         
         # Calcula os indicadores de suavidade locais
         β0 = self.API.square(self.API.abs( const(0.5, self.API)*u[...,0] - 2*u[...,1] + const(3, self.API)/2*u[...,2])) + const(13, self.API)/12*self.API.square(self.API.abs(u[...,0] - 2*u[...,1] + u[...,2]))
