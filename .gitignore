@@ -1,14 +1,12 @@
 */.ipynb_checkpoints/
-.ipynb_checkpoints/
-data.bck
-wandb/
 __pycache__/
-checkpoint
-Modelo otimizado 1/
-Modelo teste/
 *.bck
 *.bkp
-WENO-DS reescrito/Datasets/
-WENO-DS reescrito/imagens/
-WENO-DS organizado/Datasets/
-WENO-DS organizado/imagens/
+*.png
+*.mat
+WENO-DS/Datasets/
+WENO-DS/imagens/
+WENO-DS/Testes/*
+WENO-DS/Modelos treinados/Sweeps/
+*.*/
+*/wandb/
