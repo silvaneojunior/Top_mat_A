@@ -62,7 +62,7 @@ def WENO_Z_pm_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lamb
 
 class simulation:
     def __init__(self,API,equation_class,WENO, mapping=null_mapping, map_function=lambda x:x,network=None,p=2,ε=1e-40):
-        self.equation=equation_class(API, WENO, network=network,mapping=mapping, map_function=map_function, p=p,ε=1e-40)
+        self.equation=equation_class(API, WENO, network=network,mapping=mapping, map_function=map_function, p=p,ε=ε)
         self.API=API
         self.WENO=WENO
         self.network=network
