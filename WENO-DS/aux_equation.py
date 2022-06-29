@@ -153,7 +153,7 @@ class euler_equation(equation):
 
     def maximum_speed(self,U):
         eig_val=self.API.abs(self.Eigenvalues(U))
-        return self.API.max(eig_val,axis=(-1,-3),keepdims=True)
+        return self.API.max(eig_val,axis=(-1,-2),keepdims=True)
 
     def ReconstructedFlux(self, F, Q, M,Δx):
         M=self.API.expand_dims(M,axis=-3)
