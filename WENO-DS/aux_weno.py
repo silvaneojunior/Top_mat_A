@@ -59,15 +59,13 @@ def WENO_ZC_net_expo(β, δ, API, Δx, mapping=null_mapping, map_function=lambda
     return α
 
 class simulation:
-    
-    def __init__(self, API, equation_class, WENO, mapping=null_mapping, map_function=lambda x:x, network=None, p=2,ε=1e-40):
-        
-        self.equation = equation_class(API, WENO, network=network, mapping=mapping, map_function=map_function, p=p,ε=1e-40)
-        self.API      = API
-        self.WENO     = WENO
-        self.network  = network
-        self.p        = p
-        self.ε        = ε
+    def __init__(self,API,equation_class,WENO, mapping=null_mapping, map_function=lambda x:x,network=None,p=2,ε=1e-40):
+        self.equation=equation_class(API, WENO, network=network,mapping=mapping, map_function=map_function, p=p,ε=ε)
+        self.API=API
+        self.WENO=WENO
+        self.network=network
+        self.p=p
+        self.ε=ε
 
         self.mapping      = mapping
         self.map_function = map_function

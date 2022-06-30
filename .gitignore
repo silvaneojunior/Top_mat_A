@@ -4,6 +4,9 @@ __pycache__/
 *.bkp
 *.png
 *.mat
+*.h5
+*.jld
+*.csv
 WENO-DS/Datasets/
 WENO-DS/imagens/
 WENO-DS/Testes/*

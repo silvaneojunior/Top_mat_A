@@ -1,5 +1,5 @@
 import tensorflow as tf
-import tensorflow.keras as k
+import tensorflow.keras as kaux_fronteira
 import numpy as np
 
 from aux_weno import *
