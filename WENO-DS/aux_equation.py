@@ -28,12 +28,12 @@ class equation:
             ], axis=-1))
             δ = slicer(δ,3,self.API)
         else:
-            δ=(u-u)[...,1:-1]+1-0.1
+            δ=self.API.real((u-u)[...,1:-1]+1-0.1)
         
         # Calcula os indicadores de suavidade locais
-        β0 = self.API.square( 1/2.0*u[...,0] - 2*u[...,1] + 3/2.0*u[...,2]) + 13/12.0*self.API.square(u[...,0] - 2*u[...,1] + u[...,2])
-        β1 = self.API.square(-1/2.0*u[...,1]              + 1/2.0*u[...,3]) + 13/12.0*self.API.square(u[...,1] - 2*u[...,2] + u[...,3])
-        β2 = self.API.square(-3/2.0*u[...,2] + 2*u[...,3] - 1/2.0*u[...,4]) + 13/12.0*self.API.square(u[...,2] - 2*u[...,3] + u[...,4])
+        β0 = self.API.square(self.API.abs( 1/2.0*u[...,0] - 2*u[...,1] + 3/2.0*u[...,2])) + 13/12.0*self.API.square(self.API.abs(u[...,0] - 2*u[...,1] + u[...,2]))
+        β1 = self.API.square(self.API.abs(-1/2.0*u[...,1]              + 1/2.0*u[...,3])) + 13/12.0*self.API.square(self.API.abs(u[...,1] - 2*u[...,2] + u[...,3]))
+        β2 = self.API.square(self.API.abs(-3/2.0*u[...,2] + 2*u[...,3] - 1/2.0*u[...,4])) + 13/12.0*self.API.square(self.API.abs(u[...,2] - 2*u[...,3] + u[...,4]))
         
         β = self.API.stack([β0, β1, β2], axis=-1)
         
@@ -153,7 +153,7 @@ class euler_equation(equation):
 
     def maximum_speed(self,U):
         eig_val=self.API.abs(self.Eigenvalues(U))
-        return self.API.max(eig_val,axis=(-1,-3),keepdims=True)
+        return self.API.max(eig_val,axis=(-1,-2),keepdims=True)
 
     def ReconstructedFlux(self, F, Q, M,Δx):
         M=self.API.expand_dims(M,axis=-3)
