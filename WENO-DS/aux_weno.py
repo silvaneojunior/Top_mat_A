@@ -1,6 +1,9 @@
 from regex import P
 from aux_equation import *
 
+def WENO_linear(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
+    return API.constant([1, 6, 3], dtype=float_pres)/10
+
 def WENO_JS(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
     β=β*(δ+const(1, API)/10)
     # Calcula os pesos do WENO-JS

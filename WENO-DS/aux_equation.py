@@ -58,7 +58,7 @@ class equation:
     def flux_sep(self,U):
         pass
 
-    def DerivadaEspacial(self,U, Δx, AdicionaGhostPoints):
+    def DerivadaEspacial(self, U, Δx, AdicionaGhostPoints):
         U = AdicionaGhostPoints(U,self.API) # Estende a malha de pontos de acordo com as condições de fronteira
 
         f_plus,f_minus=self.flux_sep(U)
@@ -83,7 +83,7 @@ class transp_equation(equation):
         f_plus  = (U + M*U)/2 # Fluxo positivo
         f_minus = (U - M*U)/2 # Fluxo negativo
         return f_plus,f_minus
-
+    
 class burgers_equation(equation):
     def maximum_speed(self,U):
         return self.API.max(self.API.abs(U),axis=-1,keepdims=True)
