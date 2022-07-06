@@ -27,12 +27,12 @@ class equation:
             ], axis=-1))
             δ = slicer(δ,3,self.API)
         else:
-            δ=(u-u)[...,1:-1]+1-0.1
+            δ=self.API.real((u-u)[...,1:-1]+1-0.1)
         
         # Calcula os indicadores de suavidade locais
-        β0 = self.API.square( const(1, self.API)/2.0*u[...,0] - 2*u[...,1] + const(3, self.API)/2.0*u[...,2]) + const(13, self.API)/12.0*self.API.square(u[...,0] - 2*u[...,1] + u[...,2])
-        β1 = self.API.square(-const(1, self.API)/2.0*u[...,1]              + const(1, self.API)/2.0*u[...,3]) + const(13, self.API)/12.0*self.API.square(u[...,1] - 2*u[...,2] + u[...,3])
-        β2 = self.API.square(-const(3, self.API)/2.0*u[...,2] + 2*u[...,3] - const(1, self.API)/2.0*u[...,4]) + const(13, self.API)/12.0*self.API.square(u[...,2] - 2*u[...,3] + u[...,4])
+        β0 = self.API.square(self.API.abs( const(1, self.API)/2.0*u[...,0] - 2*u[...,1] + const(3, self.API)/2.0*u[...,2])) + const(13, self.API)/12.0*self.API.square(self.API.abs(u[...,0] - 2*u[...,1] + u[...,2]))
+        β1 = self.API.square(self.API.abs(-const(1, self.API)/2.0*u[...,1]              + const(1, self.API)/2.0*u[...,3])) + const(13, self.API)/12.0*self.API.square(self.API.abs(u[...,1] - 2*u[...,2] + u[...,3]))
+        β2 = self.API.square(self.API.abs(-const(3, self.API)/2.0*u[...,2] + 2*u[...,3] - const(1, self.API)/2.0*u[...,4])) + const(13, self.API)/12.0*self.API.square(self.API.abs(u[...,2] - 2*u[...,3] + u[...,4]))
         
         β = self.API.stack([β0, β1, β2], axis=-1)
         
@@ -57,7 +57,7 @@ class equation:
     def flux_sep(self,U):
         pass
 
-    def DerivadaEspacial(self,U, Δx, AdicionaGhostPoints, t=None):
+    def DerivadaEspacial(self, U, Δx, AdicionaGhostPoints, t=None):
         U = AdicionaGhostPoints(U,self.API,t=t) # Estende a malha de pontos de acordo com as condições de fronteira
 
         f_plus,f_minus=self.flux_sep(U)
@@ -82,7 +82,7 @@ class transp_equation(equation):
         f_plus  = (U + M*U)/2 # Fluxo positivo
         f_minus = (U - M*U)/2 # Fluxo negativo
         return f_plus,f_minus
-
+    
 class burgers_equation(equation):
     def maximum_speed(self,U):
         return self.API.max(self.API.abs(U),axis=-1,keepdims=True)

@@ -1,5 +1,8 @@
-from aux_base import const, B, ε_default
+from aux_base import const, B, ε_default,dtype
 from aux_mapping import *
+
+def WENO_linear_scheme(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
+    return API.constant([1, 6, 3], dtype=dtype)/10
 
 def WENO_JS_scheme(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
     β=β*(δ+const(1, API)/10)
@@ -135,6 +138,11 @@ class simulation_2D(simulation):
         return u
 
 ## 1D
+# WENO Linear
+class WENO_linear(simulation):
+    def __init__(self,API,equation_class,γ,p=2,ε=ε_default):
+        super(WENO_linear,self).__init__(API=API,equation_class=equation_class,WENO=WENO_linear_scheme,γ=γ, mapping=null_mapping, map_function=lambda x:x,network=None,p=p,ε=ε)
+
 # WENO JS
 
 class WENO_JS(simulation):
