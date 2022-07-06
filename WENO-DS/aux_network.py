@@ -1,15 +1,15 @@
 import tensorflow as tf
-import tensorflow.keras as kaux_fronteira
-import numpy as np
+import tensorflow.keras as k
 
-from aux_weno import *
-from aux_fronteira import *
+from aux_base import dtype, ε_default, API_TensorFlow
+from aux_weno import simulation
+from aux_mapping import null_mapping
 
 class WENO_layer(k.layers.Layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40,ativ_func=tf.nn.sigmoid):
+    def __init__(self,equation,WENO_method,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default,ativ_func=tf.nn.sigmoid):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -19,7 +19,7 @@ class WENO_layer(k.layers.Layer):
         fronteira (function): função que determina o comportamento do algoritmo na fronteira
         --------------------------------------------------------------------------------------
         """
-        super(WENO_layer, self).__init__(name='WENO_layer',dtype=float_pres) # Chamando o inicializador da superclasse
+        super(WENO_layer, self).__init__(name='WENO_layer',dtype=dtype) # Chamando o inicializador da superclasse
         self.simulation=simulation(API_TensorFlow,equation,WENO_method,network=self.network_graph,p=p,ε=ε,mapping=mapping, map_function=map_function)
         self.config={
             'equation':equation,
@@ -60,10 +60,10 @@ class WENO_layer(k.layers.Layer):
         
         # wei_reg = k.regularizers.L2(self.regul_weight)                                                                        # Regularização dos pesos da rede 
         # self.layers.append(k.layers.ZeroPadding1D(padding=(self.conv_size-1)//2))                                                        # Camada de padding de zeros em 1 dimensão
-        # self.layers.append(k.layers.Conv1D(10, self.conv_size, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
+        # self.layers.append(k.layers.Conv1D(10, self.conv_size, activation='elu',     dtype=dtype, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
         # self.layers.append(k.layers.ZeroPadding1D(padding=(self.conv_size-1)//2))                                                        # Camada de padding de zeros em 1 dimensão
-        # self.layers.append(k.layers.Conv1D(10, self.conv_size, activation='elu',     dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
-        # self.layers.append(k.layers.Conv1D(1, 1, activation='sigmoid', dtype=float_pres, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
+        # self.layers.append(k.layers.Conv1D(10, self.conv_size, activation='elu',     dtype=dtype, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
+        # self.layers.append(k.layers.Conv1D(1, 1, activation='sigmoid', dtype=dtype, kernel_regularizer=wei_reg)) # Camada de convolução em 1 dimensão
         
     def network_graph(self, x):
         """
@@ -91,7 +91,7 @@ class WENO_temporal_layer(WENO_layer):
     """Criando uma camada de rede neural cuja superclasse é a camada
     do keras para integrar o algoritmo do WENO com a rede neural"""
     
-    def __init__(self,equation,WENO_method,Δx,Δt,fronteira,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40,ativ_func=tf.nn.sigmoid):
+    def __init__(self,equation,WENO_method,Δx,Δt,fronteira,WENO_type='temporal',conv_size=5,regul_weight=0,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default,ativ_func=tf.nn.sigmoid):
         """
         Construtor da classe
         --------------------------------------------------------------------------------------
@@ -222,7 +222,7 @@ class Conv1D(k.layers.Layer):
         fronteira (function): função que determina o comportamento do algoritmo na fronteira
         --------------------------------------------------------------------------------------
         """
-        super(Conv1D, self).__init__(name=name,dtype=float_pres) # Chamando o inicializador da superclasse
+        super(Conv1D, self).__init__(name=name,dtype=dtype) # Chamando o inicializador da superclasse
         self.n_kernel=n_kernel
         self.kernel_size=kernel_size
         self.activation=activation

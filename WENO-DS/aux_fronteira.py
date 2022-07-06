@@ -1,7 +1,7 @@
 # Código para implementar o WENO-Z utilizando o tensorflow
 # Importando os módulos que serão utilizados
 
-def FronteiraFixa(U, API, n=3):
+def FronteiraFixa(U, API, n=3,t=None):
     """
     Função que adicionada pontos na malha de acordo com a condição de fronteira
     fixa, repetindo os valores nos extremos da malha
@@ -18,7 +18,7 @@ def FronteiraFixa(U, API, n=3):
         axis=-1)
     return U
 
-def FronteiraPeriodica(U, API, n=3):
+def FronteiraPeriodica(U, API, n=3,t=None):
     """
     Função que adicionada pontos na malha de acordo com a condição de fronteira
     periódica, continuado os valores de acordo com os extremos opostos
@@ -31,7 +31,7 @@ def FronteiraPeriodica(U, API, n=3):
     U = API.concat([U[...,-n:], U, U[...,:n]], axis=-1)
     return U
 
-def FronteiraReflexiva(U, API, n=3):
+def FronteiraReflexiva(U, API, n=3,t=None):
     
     U0 = API.concat([
         API.flip(U[...,0,:n], axis=[-1]),
