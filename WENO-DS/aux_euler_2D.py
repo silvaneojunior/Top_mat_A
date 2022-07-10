@@ -60,6 +60,8 @@ def CondiçãoInicialDoubleMach(X, Y, γ,x0):
    V0[Reg1]=-8.25/2
    P0[Reg1]=116.5
 
+   8.25
+
    R0[Reg2]=const(14,API_Numpy)/10
 
    Q0 = API_Numpy.stack([R0, R0*U0, R0*V0, P0/(γ-1)+R0*(U0**2+V0**2)/2],axis=0)
@@ -250,10 +252,10 @@ class RayleighTaylorGhostPointsX(GhostPoints):
         return API.concat([left,center,right],axis=-2)
 
 class RayleighTaylorGhostPointsY(GhostPoints):
-    def __init__(self,γ,dtype):
+    def __init__(self,γ,dtype=dtype):
         super(RayleighTaylorGhostPointsY,self).__init__(dtype=dtype)
         self.γ=API_Numpy.cast(γ,dtype=dtype)
-    def GhostPoints_Y(self,Q,API,t=None):
+    def __call__(self,Q,API,t=None):
         raw_ref_shape=API.shape(Q)[:-3]
         out_shape=API.concat([API.shape(Q)[:-1],[3]],axis=0)
         ref_shape=API.concat([API.ones(API.shape(raw_ref_shape),dtype='int32'),[4],[1],[1]],axis=0)

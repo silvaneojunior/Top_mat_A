@@ -5,10 +5,11 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-def helper_plot(ref_U,x,y,name,figsize,vmin=None,vmax=None,levels=None,xlim=None,ylim=None):
+def helper_plot(ref_U,x,y,name,figsize,vmin=None,vmax=None,levels=None,xlim=None,ylim=None,colorbar=True):
     plt.figure(figsize=figsize)
     a=plt.pcolormesh(x,y,ref_U,cmap='jet',vmin=vmin,vmax=vmax)
-    plt.colorbar(a)
+    if colorbar:
+        plt.colorbar(a)
     plt.contour(x,y,ref_U,vmin=vmin,vmax=vmax,levels=levels,colors='black',linewidths=0.25)
     plt.title(name)
     plt.xlim(xlim)
@@ -16,25 +17,32 @@ def helper_plot(ref_U,x,y,name,figsize,vmin=None,vmax=None,levels=None,xlim=None
 
 helper_gif=gif.frame(helper_plot)
 
-def create_movie(label,N,name,x,y,figsize,vmin=None,vmax=None,levels=None,xlim=None,ylim=None):
+def create_movie(label,N,name,x,y,figsize,vmin=None,vmax=None,levels=None,xlim=None,ylim=None,colorbar=True,save_dir=None,start_time=0,end_time=-1):
     frames=[]
+    if save_dir is None:
+        save_dir=label
+    if not(os.path.isdir(f'imagens/{save_dir}-{N}-{name}/')):
+        os.mkdir(f'imagens/{save_dir}-{N}-{name}/')
 
     with open(f'imagens/{label}-{N}-{name}/data.bkp','rb') as file:
         U_total=dill.load(file)
+        if end_time==-1:
+            end_time=U_total.shape[0]-1
+        U_total=U_total[start_time:end_time+1]
     for count,U in enumerate(API_Numpy.unstack(U_total,axis=0)):
 
-        helper_plot(U[0],x,y,name,figsize,vmin=vmin,vmax=vmax,levels=levels,xlim=xlim,ylim=ylim)
-        plt.savefig(f'imagens/{label}-{N}-{name}/{str(count).zfill(4)}.png')
+        helper_plot(U[0],x,y,name,figsize,vmin=vmin,vmax=vmax,levels=levels,xlim=xlim,ylim=ylim,colorbar=colorbar)
+        plt.savefig(f'imagens/{save_dir}-{N}-{name}/{str(count).zfill(4)}.png')
         plt.close()
 
-        frames.append(helper_gif(U[0],x,y,name,figsize,vmin=vmin,vmax=vmax,levels=levels,xlim=xlim,ylim=ylim))
+        frames.append(helper_gif(U[0],x,y,name,figsize,vmin=vmin,vmax=vmax,levels=levels,xlim=xlim,ylim=ylim,colorbar=colorbar))
 
         print(count,'                             ',end='\r')
-    helper_plot(U_total[-1][0],x,y,name,figsize,vmin=vmin,vmax=vmax,levels=levels,xlim=xlim,ylim=ylim)
-    plt.savefig(f'imagens/{label}-{N}-{name}/{name}.png')
+    helper_plot(U_total[-1][0],x,y,name,figsize,vmin=vmin,vmax=vmax,levels=levels,xlim=xlim,ylim=ylim,colorbar=colorbar)
+    plt.savefig(f'imagens/{save_dir}-{N}-{name}/{name}.png')
     plt.close()
     gif.save(frames,
-            f"imagens/{label}-{N}-{name}/{name}.gif", 
+            f"imagens/{save_dir}-{N}-{name}/{name}.gif", 
             duration=1)
 
 def create_data(label,N,name,U0,WENO,Δt_max,t_final,cfl,Δx, Δy, GhostPointsX, GhostPointsY,Force,continue_flag=True):
