@@ -1,22 +1,21 @@
-from decimal import ROUND_HALF_DOWN
-from math import gamma
-from aux_mapping import *
+from aux_mapping import null_mapping
+from aux_base import dtype, C, ε_default, const, API_Numpy
 
 class equation:
-    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40):
+    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
         self.API=API
         self.WENO=WENO
         self.network=network
-        self.p=p
+        self.p=const(p, API)
         self.ε=ε
 
         self.mapping=mapping
         self.map_function=map_function
 
-    def Get_weights_graph(self,u,Δx,AdicionaGhostPoints=None):
+    def Get_weights_graph(self,u,Δx,AdicionaGhostPoints=None,t=None):
 
         if AdicionaGhostPoints is not None:
-            u = AdicionaGhostPoints(u,self.API,n=2)
+            u = AdicionaGhostPoints(u,self.API,t=t,n=2)
             u = slicer(u,5,self.API)
         if self.network is not None:
             δ = self.network(self.API.concat([
@@ -31,9 +30,9 @@ class equation:
             δ=self.API.real((u-u)[...,1:-1]+1-0.1)
         
         # Calcula os indicadores de suavidade locais
-        β0 = self.API.square(self.API.abs( 1/2.0*u[...,0] - 2*u[...,1] + 3/2.0*u[...,2])) + 13/12.0*self.API.square(self.API.abs(u[...,0] - 2*u[...,1] + u[...,2]))
-        β1 = self.API.square(self.API.abs(-1/2.0*u[...,1]              + 1/2.0*u[...,3])) + 13/12.0*self.API.square(self.API.abs(u[...,1] - 2*u[...,2] + u[...,3]))
-        β2 = self.API.square(self.API.abs(-3/2.0*u[...,2] + 2*u[...,3] - 1/2.0*u[...,4])) + 13/12.0*self.API.square(self.API.abs(u[...,2] - 2*u[...,3] + u[...,4]))
+        β0 = self.API.square(self.API.abs( const(1, self.API)/2.0*u[...,0] - 2*u[...,1] + const(3, self.API)/2.0*u[...,2])) + const(13, self.API)/12.0*self.API.square(self.API.abs(u[...,0] - 2*u[...,1] + u[...,2]))
+        β1 = self.API.square(self.API.abs(-const(1, self.API)/2.0*u[...,1]              + const(1, self.API)/2.0*u[...,3])) + const(13, self.API)/12.0*self.API.square(self.API.abs(u[...,1] - 2*u[...,2] + u[...,3]))
+        β2 = self.API.square(self.API.abs(-const(3, self.API)/2.0*u[...,2] + 2*u[...,3] - const(1, self.API)/2.0*u[...,4])) + const(13, self.API)/12.0*self.API.square(self.API.abs(u[...,2] - 2*u[...,3] + u[...,4]))
         
         β = self.API.stack([β0, β1, β2], axis=-1)
         
@@ -58,8 +57,8 @@ class equation:
     def flux_sep(self,U):
         pass
 
-    def DerivadaEspacial(self, U, Δx, AdicionaGhostPoints):
-        U = AdicionaGhostPoints(U,self.API) # Estende a malha de pontos de acordo com as condições de fronteira
+    def DerivadaEspacial(self, U, Δx, AdicionaGhostPoints, t=None):
+        U = AdicionaGhostPoints(U,self.API,t=t) # Estende a malha de pontos de acordo com as condições de fronteira
 
         f_plus,f_minus=self.flux_sep(U)
 
@@ -75,7 +74,7 @@ class equation:
 
 class transp_equation(equation):
     def maximum_speed(self,U):
-        return self.API.cast(1,float_pres)
+        return self.API.cast(1,dtype)
     def flux_sep(self,U):
         U = slicer(U,6,self.API)
         # Setup para equação do transporte
@@ -106,7 +105,7 @@ class diff_equation(equation):
         return f_plus,f_minus
 
 class euler_equation(equation):
-    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40,γ=1.4):
+    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default,γ=const(14,API_Numpy)/10):
         super(euler_equation,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p,ε=ε)
         self.γ=γ
     def Pressure(self,Q):
@@ -117,7 +116,7 @@ class euler_equation(equation):
         d=b/c
         e=Q2-d
         
-        return np.abs(a*e)
+        return self.API.abs(a*e)
 
     def Eigensystem(self,Q):
         Q0,Q1,Q2=self.API.unstack(Q,axis=-2)
@@ -168,9 +167,9 @@ class euler_equation(equation):
 
         return F_half_plus + F_half_minus
 
-    def DerivadaEspacial(self,Q, Δx, AdicionaGhostPoints):
+    def DerivadaEspacial(self,Q, Δx, AdicionaGhostPoints, t=None):
         Ord = 5 # The order of the scheme
-        Q = AdicionaGhostPoints(Q,self.API)
+        Q = AdicionaGhostPoints(Q,self.API, t=t)
 
         #N = Q.shape[1]
 
@@ -193,9 +192,9 @@ class euler_equation(equation):
         return (F_half[...,1:] - F_half[...,:-1])/Δx # Derivative of Flux
 
 class euler_equation_2D(equation):
-    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=1e-40,γ=5/3):
+    def __init__(self,API, WENO, network,γ,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
         super(euler_equation_2D,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p,ε=ε)
-        self.γ=γ
+        self.γ=API.cast(γ,dtype=dtype)
     def Pressure_1D(self,Q):
         Q1,Q2,Q3,Q4=self.API.unstack(Q,axis=-2)
 
@@ -240,13 +239,12 @@ class euler_equation_2D(equation):
 
     def ArithmeticAverage(self,Q):
         r = 2
-        # Perguntar Rafael
         Qa = (Q[...,r] + Q[...,r+1])/2
 
         Qa=self.API.einsum('...xyv->...vxy',Qa)
 
         R, U, V, P = self.PrimitiveVariables_2D(Qa)
-        #print(P)
+
         A = self.API.sqrt(self.γ*P/R)     # Sound speed
         H = (Qa[...,3,:,:] + P)/R    # Enthalpy
         h = 1/(2*H - U**2 - V**2)
@@ -330,15 +328,14 @@ class euler_equation_2D(equation):
 
         return F_half_plus + F_half_minus
 
-    def DerivadaEspacialX(self,Q, Δx, AdicionaGhostPoints):
+    def DerivadaEspacialX(self,Q, Δx, AdicionaGhostPoints, t=None):
         Ord = 5 # The order of the scheme
-        Q = AdicionaGhostPoints(Q,self.API)
+        Q = AdicionaGhostPoints(Q,self.API, t=t)
 
         #N = Q.shape[1]
 
-        pre_Qi=self.API.einsum('...ijk->...ikj',Q)
-        Qi=slicer(pre_Qi,6,self.API)
-        Qi=self.API.einsum('...ikjl->...jkil',Qi)
+        Qi=slicer_X(Q,6,self.API)
+        Qi=self.API.einsum('...ijkl->...jkil',Qi)
         
         Λ = self.EigenvaluesX(Qi)
         M = self.API.max(self.API.abs(Λ),axis=(-1,-2),keepdims=True)
@@ -352,13 +349,13 @@ class euler_equation_2D(equation):
         F_half = self.API.einsum('...xyv,...xyuv -> ...uxy',G_half,R)  # Brings back to conservative variables
         return (F_half[...,1:,:] - F_half[...,:-1,:])/Δx # Derivative of Flux
 
-    def DerivadaEspacialY(self,Q, Δy, AdicionaGhostPoints):
+    def DerivadaEspacialY(self,Q, Δy, AdicionaGhostPoints, t=None):
         Ord = 5 # The order of the scheme
-        Q = AdicionaGhostPoints(Q,self.API)
+        Q = AdicionaGhostPoints(Q,self.API,t=t)
 
         #N = Q.shape[1]
 
-        Qi=slicer(Q,6,self.API)
+        Qi=slicer_Y(Q,6,self.API)
         Qi=self.API.einsum('...ijkl->...jkil',Qi)
         
         Λ = self.EigenvaluesY(Qi)
@@ -384,4 +381,30 @@ def slicer(data,n,API):
         )
     )
 
+    return data_sliced
+
+def slicer_X(data,n,API):
+    helper = lambda i: data[...,i:i+n,:]
+
+    data_sliced = API.einsum(
+    'i...lj -> ...ijl',
+        API.map_fn(
+            helper,                    # Função a ser executada a cada iteração do loop
+            API.range(API.shape(data)[-2]-n+1),     # Índices utilizados no loop
+            fn_output_signature=data.dtype # Tipo da variável de retorno (epecificado pois o tipo de entrado difere do tipo de saída)
+        )
+    )
+    return data_sliced
+
+def slicer_Y(data,n,API):
+    helper = lambda i: data[...,i:i+n]
+
+    data_sliced = API.einsum(
+    'j...il -> ...ijl',
+        API.map_fn(
+            helper,                    # Função a ser executada a cada iteração do loop
+            API.range(API.shape(data)[-1]-n+1),     # Índices utilizados no loop
+            fn_output_signature=data.dtype # Tipo da variável de retorno (epecificado pois o tipo de entrado difere do tipo de saída)
+        )
+    )
     return data_sliced

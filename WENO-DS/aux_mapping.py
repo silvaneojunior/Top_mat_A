@@ -1,4 +1,5 @@
-from aux_base import *
+from aux_base import dtype,B
+import numpy as np
 
 """
 Obtendo matrizes de constantes convenintes para executar o WENO-Z
@@ -94,7 +95,7 @@ def discrete_map(function):
     for i in range(len(vetor)):
         vetor[i] = function(vetor[i]/vetor[-1])
         
-    vetor = np.asarray(vetor, dtype=float_pres)
+    vetor = np.asarray(vetor, dtype=dtype)
     
     return vetor
 
