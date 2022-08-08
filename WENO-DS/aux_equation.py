@@ -2,7 +2,7 @@ from aux_mapping import null_mapping
 from aux_base import dtype, C, ε_default, const, API_Numpy
 
 class equation:
-    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
+    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default,γ=None):
         self.API=API
         self.WENO=WENO
         self.network=network
@@ -15,7 +15,7 @@ class equation:
     def Get_weights_graph(self,u,Δx,AdicionaGhostPoints=None,t=None):
 
         if AdicionaGhostPoints is not None:
-            u = AdicionaGhostPoints(u,self.API,t=t,n=2)
+            u = AdicionaGhostPoints(u,self.API,t=t,n=2,Δx=Δx)
             u = slicer(u,5,self.API)
         if self.network is not None:
             δ = self.network(self.API.concat([
@@ -36,13 +36,14 @@ class equation:
         
         β = self.API.stack([β0, β1, β2], axis=-1)
         
-        α = self.WENO(β,δ,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function,ε=self.ε)
+        α = self.WENO(β,δ,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function,p=self.p,ε=self.ε)
         soma = self.API.sum(α, axis=-1, keepdims=True)
         ω    = α / soma
 
         return ω,α,β,δ
 
     def ReconstructionMinus(self,u,Δx):
+        
         ω,α,β,δ=self.Get_weights_graph(u,Δx)
         # Calcula os fhat em cada subestêncil
         fhat = self.API.matmul(u, C)
@@ -58,7 +59,7 @@ class equation:
         pass
 
     def DerivadaEspacial(self, U, Δx, AdicionaGhostPoints, t=None):
-        U = AdicionaGhostPoints(U,self.API,t=t) # Estende a malha de pontos de acordo com as condições de fronteira
+        U = AdicionaGhostPoints(U,self.API,t=t,Δx=Δx) # Estende a malha de pontos de acordo com as condições de fronteira
 
         f_plus,f_minus=self.flux_sep(U)
 
@@ -76,7 +77,7 @@ class transp_equation(equation):
     def maximum_speed(self,U):
         return self.API.cast(1,dtype)
     def flux_sep(self,U):
-        U = slicer(U,6,self.API)
+        U  = slicer(U,6,self.API)
         # Setup para equação do transporte
         M = self.maximum_speed(U)                          # Valor utilizado para realizar a separação de fluxo
         f_plus  = (U + M*U)/2 # Fluxo positivo
@@ -154,8 +155,9 @@ class euler_equation(equation):
         eig_val=self.API.abs(self.Eigenvalues(U))
         return self.API.max(eig_val,axis=(-1,-2),keepdims=True)
 
-    def ReconstructedFlux(self, F, Q, M,Δx):
-        M=self.API.expand_dims(M,axis=-3)
+    def ReconstructedFlux(self, F, Q, M, Δx):
+        
+        M = self.API.expand_dims(M,axis=-3)
         F_plus  = (F + M*Q)/2
         F_minus = (F - M*Q)/2
 
@@ -169,7 +171,7 @@ class euler_equation(equation):
 
     def DerivadaEspacial(self,Q, Δx, AdicionaGhostPoints, t=None):
         Ord = 5 # The order of the scheme
-        Q = AdicionaGhostPoints(Q,self.API, t=t)
+        Q = AdicionaGhostPoints(Q, self.API, t=t, Δx=Δx)
 
         #N = Q.shape[1]
 
@@ -330,7 +332,7 @@ class euler_equation_2D(equation):
 
     def DerivadaEspacialX(self,Q, Δx, AdicionaGhostPoints, t=None):
         Ord = 5 # The order of the scheme
-        Q = AdicionaGhostPoints(Q,self.API, t=t)
+        Q = AdicionaGhostPoints(Q,self.API, t=t, Δx=Δx)
 
         #N = Q.shape[1]
 
@@ -351,7 +353,7 @@ class euler_equation_2D(equation):
 
     def DerivadaEspacialY(self,Q, Δy, AdicionaGhostPoints, t=None):
         Ord = 5 # The order of the scheme
-        Q = AdicionaGhostPoints(Q,self.API,t=t)
+        Q = AdicionaGhostPoints(Q,self.API,t=t,Δx=Δx)
 
         #N = Q.shape[1]
 

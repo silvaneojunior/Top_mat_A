@@ -29,15 +29,6 @@ def WENO_Zp_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x
     α = mapping(λ, API, map_function)
     return α
 
-def WENO_Zp_net_expo_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
-    # Calcula o indicador de suavidade global
-    τ = API.abs(β[...,0:1] - β[...,2:3])
-    # Calcula os pesos do WENO-Z+
-    γ = (τ + ε)/(β + ε)
-    λ = 1 + γ**p+(Δx**δ)/γ
-    α = mapping(λ, API, map_function)
-    return α
-
 def WENO_ZC_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
     β = β*(δ+const(1, API)/10)
     # Calcula o indicador de suavidade global
@@ -48,6 +39,37 @@ def WENO_ZC_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x
     λ = (1 + γ**p)
     α = mapping(λ, API, map_function)
     α = α + API.matmul((Δx**(const(2, API)/3))/γ, B)
+    return α
+
+def WENO_D_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
+    β = β*(δ+const(1, API)/10)
+    # Calcula o indicador de suavidade global
+    τ = API.abs(β[...,0:1] - β[...,2:3])
+    ϕ = API.sqrt(API.abs(β[...,0:1] - 2*β[...,1:2] + β[...,2:3]))
+    Φ = API.minimum(1,ϕ)
+    # Calcula os pesos do WENO-Z
+    λ = 1 + Φ*(τ/(β + ε))**p
+    α = mapping(λ, API, map_function)
+    return α
+
+def WENO_A_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
+    β = β*(δ+const(1, API)/10)
+    # Calcula o indicador de suavidade global
+    τ = API.abs(β[...,0:1] - β[...,2:3])
+    ϕ = API.sqrt(API.abs(β[...,0:1] - 2*β[...,1:2] + β[...,2:3]))
+    Φ = API.minimum(1,ϕ)
+    # Calcula os pesos do WENO-Z
+    λ = API.maximum(1, Φ*(τ/(β + ε))**p)
+    α = mapping(λ, API, map_function)
+    return α
+
+def WENO_Zp_net_expo_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
+    # Calcula o indicador de suavidade global
+    τ = API.abs(β[...,0:1] - β[...,2:3])
+    # Calcula os pesos do WENO-Z+
+    γ = (τ + ε)/(β + ε)
+    λ = 1 + γ**p+(Δx**δ)/γ
+    α = mapping(λ, API, map_function)
     return α
 
 def WENO_ZC_net_expo_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):

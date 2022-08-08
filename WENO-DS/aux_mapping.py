@@ -71,6 +71,18 @@ def Hong_mapping(ω, API):
     
     return α
 
+resolution = 10000
+    
+def discrete_map(function):
+    
+    vetor = list(range(0, resolution))
+    for i in range(len(vetor)):
+        vetor[i] = function(vetor[i]/vetor[-1])
+        
+    vetor = np.asarray(vetor, dtype=dtype)
+    
+    return vetor
+
 def function_BI(x, k):
     
     if x < 1/10:
@@ -87,18 +99,6 @@ def function_BI(x, k):
     else:
         return Henrick_function(x, 1/3)
 
-resolution = 10000
-    
-def discrete_map(function):
-    
-    vetor = list(range(0, resolution))
-    for i in range(len(vetor)):
-        vetor[i] = function(vetor[i]/vetor[-1])
-        
-    vetor = np.asarray(vetor, dtype=dtype)
-    
-    return vetor
-
 vetor_BI_0 = discrete_map(lambda x: function_BI(x, k=0))
 vetor_BI_1 = discrete_map(lambda x: function_BI(x, k=1))
 vetor_BI_2 = discrete_map(lambda x: function_BI(x, k=2))
@@ -110,6 +110,103 @@ def BI_mapping(ω, API):
     ω0 = API.gather(vetor_BI_0, index[...,0:1])
     ω1 = API.gather(vetor_BI_1, index[...,1:2])
     ω2 = API.gather(vetor_BI_2, index[...,2:])
+    
+    α  = API.concat([ω0, ω1, ω2], axis = -1)
+    
+    return α
+
+def function_BIP(x, k, p):
+    
+    # Valor recomendado de p entre -2 e 2
+    
+    f = lambda x: x**(10**p)
+    
+    corte1 = 1/10 #       corte1 < 1/3
+    corte2 = 7/16 # 1/3 < corte2 < 1/2
+    corte3 = 9/10 # 1/2 < corte3
+    
+    if x < corte1:
+        return 1/3 - f(1-(x/corte1))/3
+    elif x < corte2:
+        return 1/3
+    elif x < corte3:
+        if k == 0:
+            return 2/5
+        if k == 1:
+            return 1/5
+        if k == 2:
+            return 2/5
+    else:
+        if k == 0:
+            a = 1-(2/5)
+            b = 2/5
+        if k == 1:
+            a = 1-(1/5)
+            b = 1/5
+        if k == 2:
+            a = 1-(2/5)
+            b = 2/5
+        return a*f((x-corte3)/(1-corte3)) + b
+
+vetor_BIM_0 = discrete_map(lambda x: function_BIP(x, k=0, p=1))
+vetor_BIM_1 = discrete_map(lambda x: function_BIP(x, k=1, p=1))
+vetor_BIM_2 = discrete_map(lambda x: function_BIP(x, k=2, p=1))
+
+vetor_BIm_0 = discrete_map(lambda x: function_BIP(x, k=0, p=-2))
+vetor_BIm_1 = discrete_map(lambda x: function_BIP(x, k=1, p=-2))
+vetor_BIm_2 = discrete_map(lambda x: function_BIP(x, k=2, p=-2))
+
+def BIM_mapping(ω, API):
+    
+    index = API.cast(API.floor(ω*(resolution-1)), dtype='int32')
+    
+    ω0 = API.gather(vetor_BIM_0, index[...,0:1])
+    ω1 = API.gather(vetor_BIM_1, index[...,1:2])
+    ω2 = API.gather(vetor_BIM_2, index[...,2:])
+    
+    α  = API.concat([ω0, ω1, ω2], axis = -1)
+    
+    return α
+
+def BIm_mapping(ω, API):
+    
+    index = API.cast(API.floor(ω*(resolution-1)), dtype='int32')
+    
+    ω0 = API.gather(vetor_BIm_0, index[...,0:1])
+    ω1 = API.gather(vetor_BIm_1, index[...,1:2])
+    ω2 = API.gather(vetor_BIm_2, index[...,2:])
+    
+    α  = API.concat([ω0, ω1, ω2], axis = -1)
+    
+    return α
+
+def function_BI2(x, k):
+    
+    if x < 1/10:
+        return x
+    elif x < 7/16:
+        return 1/3
+    elif x < 9/10:
+        if k == 0:
+            return 2/5
+        if k == 1:
+            return 1/5
+        if k == 2:
+            return 2/5
+    else:
+        return x
+
+vetor_BI2_0 = discrete_map(lambda x: function_BI2(x, k=0))
+vetor_BI2_1 = discrete_map(lambda x: function_BI2(x, k=1))
+vetor_BI2_2 = discrete_map(lambda x: function_BI2(x, k=2))
+
+def BI2_mapping(ω, API):
+    
+    index = API.cast(API.floor(ω*(resolution-1)), dtype='int32')
+    
+    ω0 = API.gather(vetor_BI2_0, index[...,0:1])
+    ω1 = API.gather(vetor_BI2_1, index[...,1:2])
+    ω2 = API.gather(vetor_BI2_2, index[...,2:])
     
     α  = API.concat([ω0, ω1, ω2], axis = -1)
     
