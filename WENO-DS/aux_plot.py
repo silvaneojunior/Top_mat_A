@@ -65,6 +65,8 @@ def create_f_points(f_test, Δx, xlim=(-1,1), dtype='float64'):
     u = f_test(x)                                     # Obtendo a condição inicial a partir de f_test
     u = np.expand_dims(u, axis=0)                     # Acrescentando uma dimensão
     
+    x = np.tile(x, 4)
+    
     return x, u
 
 def get_inner_val(test_weno, u, Δx, fronteira):

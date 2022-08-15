@@ -8,7 +8,7 @@ com o tensorflow
 """
 
 null_mapping = lambda λ, API, map_function: API.matmul(λ, B)
-    
+
 def post_mapping(λ, API, map_function):
 
     α    = API.matmul(λ, B)
@@ -102,6 +102,34 @@ def function_BI(x, k):
 vetor_BI_0 = discrete_map(lambda x: function_BI(x, k=0))
 vetor_BI_1 = discrete_map(lambda x: function_BI(x, k=1))
 vetor_BI_2 = discrete_map(lambda x: function_BI(x, k=2))
+
+def ENO_mapping(ω, API):
+    
+    c1 = API.maximum(1/10-(ω[...,0:1]+ω[...,2:]), 0)
+    c2 = API.maximum(ω[...,0:1]-19/20, 0)
+    c3 = API.maximum(ω[...,2:] -19/20, 0)
+    
+    c4  = API.maximum(ω[...,0:1]-1/20, 0)
+    c4 *= API.maximum(ω[...,2:] -1/20, 0)
+    
+    c5  = API.maximum(ω[...,0:1]+ω[...,2:]-1/10, 0)
+    c5 *= API.maximum(19/20-ω[...,0:1], 0)
+    c5 *= API.maximum(19/20-ω[...,2:] , 0)
+    c5 *= API.maximum(1/20-ω[...,0:1], 0) + API.maximum(1/20-ω[...,2:], 0)
+    
+    c6 = c5*API.maximum(ω[...,2:] -ω[...,0:1], 0)
+    c5 = c5*API.maximum(ω[...,0:1]-ω[...,2:] , 0)
+    
+    α  = c1*API.constant([0,1,0], dtype = dtype)
+    α += c2*API.constant([1,0,0], dtype = dtype)
+    α += c3*API.constant([0,0,1], dtype = dtype)
+    
+    α += c5*API.constant([5/2,5/4,0], dtype = dtype)
+    α += c6*API.constant([0,5/6,5/3], dtype = dtype)
+    
+    α += c4*API.constant([1/3,1/3,1/3], dtype = dtype)
+    
+    return α
 
 def BI_mapping(ω, API):
     

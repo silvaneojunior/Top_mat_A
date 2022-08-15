@@ -2,14 +2,14 @@ from aux_base import const, B, ε_default,dtype
 from aux_mapping import *
 
 def WENO_linear_scheme(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
-    return API.constant([1, 6, 3], dtype=dtype)/10
+    return API.constant([1, 6, 3], dtype=dtype)/10, API.constant([1, 6, 3], dtype=dtype)/10
 
 def WENO_JS_scheme(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
     β=β*(δ+const(1, API)/10)
     # Calcula os pesos do WENO-JS
     λ = (1/(β + ε))**p
     α = mapping(λ,API,map_function)
-    return α
+    return α, λ
 
 def WENO_Z_scheme(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
     # Calcula o indicador de suavidade global
@@ -17,7 +17,7 @@ def WENO_Z_scheme(β,δ,API,Δx,mapping=null_mapping, map_function=lambda x:x,p=
     # Calcula os pesos do WENO-Z
     λ = 1 + (τ/(β + ε))**p
     α = mapping(λ, API, map_function)
-    return α
+    return α, λ
 
 def WENO_Zp_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
     β = β*(δ+const(1, API)/10)
@@ -27,7 +27,7 @@ def WENO_Zp_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x
     γ = (τ + ε)/(β + ε)
     λ = 1 + γ**p + (Δx**(const(2, API)/3))/γ
     α = mapping(λ, API, map_function)
-    return α
+    return α, λ
 
 def WENO_ZC_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
     β = β*(δ+const(1, API)/10)
@@ -39,7 +39,7 @@ def WENO_ZC_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x
     λ = (1 + γ**p)
     α = mapping(λ, API, map_function)
     α = α + API.matmul((Δx**(const(2, API)/3))/γ, B)
-    return α
+    return α, λ
 
 def WENO_D_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
     β = β*(δ+const(1, API)/10)
@@ -50,7 +50,7 @@ def WENO_D_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:
     # Calcula os pesos do WENO-Z
     λ = 1 + Φ*(τ/(β + ε))**p
     α = mapping(λ, API, map_function)
-    return α
+    return α, λ
 
 def WENO_A_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
     β = β*(δ+const(1, API)/10)
@@ -61,7 +61,7 @@ def WENO_A_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:
     # Calcula os pesos do WENO-Z
     λ = API.maximum(1, Φ*(τ/(β + ε))**p)
     α = mapping(λ, API, map_function)
-    return α
+    return α, λ
 
 def WENO_Zp_net_expo_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
     # Calcula o indicador de suavidade global
@@ -70,7 +70,7 @@ def WENO_Zp_net_expo_scheme(β, δ, API, Δx, mapping=null_mapping, map_function
     γ = (τ + ε)/(β + ε)
     λ = 1 + γ**p+(Δx**δ)/γ
     α = mapping(λ, API, map_function)
-    return α
+    return α, λ
 
 def WENO_ZC_net_expo_scheme(β, δ, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2,ε=ε_default):
     # Calcula o indicador de suavidade global
@@ -81,7 +81,7 @@ def WENO_ZC_net_expo_scheme(β, δ, API, Δx, mapping=null_mapping, map_function
     λ = (1 + γ**p)
     α = mapping(λ, API, map_function)
     α = α + API.matmul((Δx**(δ))/γ, B)
-    return α
+    return α, λ
 
 class simulation:
     def __init__(self,API,equation_class,WENO,γ, mapping=null_mapping, map_function=lambda x:x,network=None,p=2,ε=ε_default):

@@ -36,15 +36,15 @@ class equation:
         
         β = self.API.stack([β0, β1, β2], axis=-1)
         
-        α = self.WENO(β,δ,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function,p=self.p,ε=self.ε)
+        α, λ = self.WENO(β,δ,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function,p=self.p,ε=self.ε)
         soma = self.API.sum(α, axis=-1, keepdims=True)
         ω    = α / soma
 
-        return ω,α,β,δ
+        return ω, α, β, δ, λ
 
     def ReconstructionMinus(self,u,Δx):
         
-        ω,α,β,δ=self.Get_weights_graph(u,Δx)
+        ω = self.Get_weights_graph(u,Δx)[0]
         # Calcula os fhat em cada subestêncil
         fhat = self.API.matmul(u, C)
         # Calcula o fhat do estêncil todo
