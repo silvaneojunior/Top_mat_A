@@ -114,7 +114,7 @@ class ShockEntropy2DGhostPointsX(GhostPoints):
         self.Δx=API_Numpy.cast(Δx,self.dtype)
         self.y=y
         self.θ=API_Numpy.cast(θ,self.dtype)
-    def __call__(self,Q,API,t=None):
+    def __call__(self,Q,API, n=3,t=None):
         ρl = API.cast(27,self.dtype)/7.0
         ul = 4.0*API.sqrt(API.cast(35,self.dtype))/9.0
         pl = API.cast(31,self.dtype)/3.0
@@ -143,7 +143,7 @@ class ShockEntropy2DGhostPointsX(GhostPoints):
         return API.concat(Qg,-2)
 
 class ShockEntropy2DGhostPointsY(GhostPoints):
-    def __call__(self,Q,API,t=None):
+    def __call__(self,Q,API, n=3,t=None):
         Qg = API.concat(
             [Q[...,:,-3:],
                 Q,
@@ -163,7 +163,7 @@ class DoubleMachGhostPointsX(GhostPoints):
             116.5/(γ - 1) + 4*(API_Numpy.cast(8.25,dtype=dtype))**2
             ],
             dtype=self.dtype)
-    def __call__(self,Q,API,t=None):
+    def __call__(self,Q,API, n=3,t=None):
         pre_shape=API.shape(Q)[:-3]
         uL_shape=API.cast(API.concat([pre_shape,(4,1,1)],axis=0),'int32')
         ones_shape=API.cast(API.concat([pre_shape,(1,self.L,API.shape(Q)[-1])],axis=0),'int32')
@@ -199,7 +199,7 @@ class DoubleMachGhostPointsY(GhostPoints):
             ],
             dtype=self.dtype)
         self.Reflect=np.asarray([1,1,-1,1],dtype=self.dtype) # indice da dimensão que será refletida
-    def __call__(self,Q,API,t):
+    def __call__(self,Q,API, n=3,t=0):
         Lu=API.shape(Q)[-3]
         Lx=API.shape(Q)[-2]
         pre_shape=API.shape(Q)[:-3]
@@ -240,7 +240,7 @@ class DoubleMachGhostPointsY(GhostPoints):
         return API.concat(Qg,-1)
 
 class RayleighTaylorGhostPointsX(GhostPoints):
-    def __call__(self,Q,API,t=None):
+    def __call__(self,Q,API, n=3,t=None):
         left=API.stack([Q[...,0,:3,:],-Q[...,1,:3,:],Q[...,2,:3,:],Q[...,3,:3,:]],axis=-3)
         left=API.reverse(left,axis=[-2])
 
@@ -255,7 +255,7 @@ class RayleighTaylorGhostPointsY(GhostPoints):
     def __init__(self,γ,dtype=dtype):
         super(RayleighTaylorGhostPointsY,self).__init__(dtype=dtype)
         self.γ=API_Numpy.cast(γ,dtype=dtype)
-    def __call__(self,Q,API,t=None):
+    def __call__(self,Q,API, n=3,t=None):
         raw_ref_shape=API.shape(Q)[:-3]
         out_shape=API.concat([API.shape(Q)[:-1],[3]],axis=0)
         ref_shape=API.concat([API.ones(API.shape(raw_ref_shape),dtype='int32'),[4],[1],[1]],axis=0)
