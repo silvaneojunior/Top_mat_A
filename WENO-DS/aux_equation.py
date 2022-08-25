@@ -1,18 +1,20 @@
+from math import gamma
 from aux_mapping import null_mapping
 from aux_base import dtype, C, ε_default, const, API_Numpy
 
 class equation:
-    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
+    def __init__(self,API, WENO, network,γ,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
         self.API=API
         self.WENO=WENO
         self.network=network
         self.p=const(p, API)
         self.ε=ε
+        self.γ=γ
 
         self.mapping=mapping
         self.map_function=map_function
 
-    def Get_weights_graph(self,u,Δx,AdicionaGhostPoints=None,t=None):
+    def Get_weights_graph(self,u,Δx, d,AdicionaGhostPoints=None,t=None):
 
         if AdicionaGhostPoints is not None:
             u = AdicionaGhostPoints(u,self.API,t=t,n=2)
@@ -36,39 +38,36 @@ class equation:
         
         β = self.API.stack([β0, β1, β2], axis=-1)
         
-        α = self.WENO(β,δ,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function,ε=self.ε)
+        α = self.WENO(β,δ,d,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function,ε=self.ε)
         soma = self.API.sum(α, axis=-1, keepdims=True)
         ω    = α / soma
 
         return ω,α,β,δ
 
-    def ReconstructionMinus(self,u,Δx):
-        ω,α,β,δ=self.Get_weights_graph(u,Δx)
+    def ReconstructionMinus(self,u,Δx, d, C):
+        ω,α,β,δ=self.Get_weights_graph(u,Δx,d)
         # Calcula os fhat em cada subestêncil
         fhat = self.API.matmul(u, C)
         # Calcula o fhat do estêncil todo
         fhat = self.API.sum(ω * fhat, axis=-1)
         return fhat
 
-    def ReconstructionPlus(self,u,Δx):
-        fhat = self.ReconstructionMinus(self.API.reverse(u,axis=[-1]),Δx)
+    def ReconstructionPlus(self,u,Δx, d, C):
+        fhat = self.ReconstructionMinus(self.API.reverse(u,axis=[-1]),Δx, d, C)
         return fhat
         
     def flux_sep(self,U):
         pass
 
-    def DerivadaEspacial(self, U, Δx, AdicionaGhostPoints, t=None):
-        U = AdicionaGhostPoints(U,self.API,t=t) # Estende a malha de pontos de acordo com as condições de fronteira
+    def DerivadaEspacial(self, U, Δx, AdicionaGhostPoints, d, C, t=None, n_ghostpoints=3):
+        U = AdicionaGhostPoints(U,self.API,n=n_ghostpoints,t=t) # Estende a malha de pontos de acordo com as condições de fronteira
 
         f_plus,f_minus=self.flux_sep(U)
 
         # Aplicar WENO em cada variável característica separadamente para depois juntar
-        f_half_minus = self.ReconstructionMinus(f_plus[...,:-1],Δx) 
-        f_half_plus  = self.ReconstructionPlus( f_minus[...,1:],Δx)
+        f_half_minus = self.ReconstructionMinus(f_plus[...,:-1],Δx, d, C) 
+        f_half_plus  = self.ReconstructionPlus( f_minus[...,1:],Δx, d, C)
         Fhat         = (f_half_minus + f_half_plus)
-
-        # Calculando uma estimava da derivada a partir de diferenças finitas
-        Fhat = (Fhat[...,1:] - Fhat[...,:-1]) / Δx
 
         return Fhat
 
@@ -106,7 +105,7 @@ class diff_equation(equation):
 
 class euler_equation(equation):
     def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default,γ=const(14,API_Numpy)/10):
-        super(euler_equation,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p,ε=ε)
+        super(euler_equation,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p,ε=ε,γ=γ)
         self.γ=γ
     def Pressure(self,Q):
         Q0,Q1,Q2=self.API.unstack(Q,axis=-2)
@@ -116,7 +115,7 @@ class euler_equation(equation):
         d=b/c
         e=Q2-d
         
-        return self.API.abs(a*e)
+        return a*e
 
     def Eigensystem(self,Q):
         Q0,Q1,Q2=self.API.unstack(Q,axis=-2)
@@ -154,7 +153,7 @@ class euler_equation(equation):
         eig_val=self.API.abs(self.Eigenvalues(U))
         return self.API.max(eig_val,axis=(-1,-2),keepdims=True)
 
-    def ReconstructedFlux(self, F, Q, M,Δx):
+    def ReconstructedFlux(self, F, Q, M,Δx, d, C):
         M=self.API.expand_dims(M,axis=-3)
         F_plus  = (F + M*Q)/2
         F_minus = (F - M*Q)/2
@@ -162,14 +161,14 @@ class euler_equation(equation):
         F_plus=self.API.einsum('...ijk->...jik',F_plus)
         F_minus=self.API.einsum('...ijk->...jik',F_minus)
         
-        F_half_plus  = self.ReconstructionMinus(F_plus[...,:-1],Δx)
-        F_half_minus = self.ReconstructionPlus(F_minus[...,1:],Δx)
+        F_half_plus  = self.ReconstructionMinus(F_plus[...,:-1],Δx, d, C)
+        F_half_minus = self.ReconstructionPlus(F_minus[...,1:],Δx, d, C)
 
         return F_half_plus + F_half_minus
 
-    def DerivadaEspacial(self,Q, Δx, AdicionaGhostPoints, t=None):
+    def DerivadaEspacial(self,Q, Δx, d, C, AdicionaGhostPoints, t=None,n_ghostpoints=3):
         Ord = 5 # The order of the scheme
-        Q = AdicionaGhostPoints(Q,self.API, t=t)
+        Q = AdicionaGhostPoints(Q,self.API,n=n_ghostpoints, t=t)
 
         #N = Q.shape[1]
 
@@ -187,13 +186,13 @@ class euler_equation(equation):
         W = self.API.einsum('...nvc,...uvn -> ...nuc',Qi,L)       # Transforms into characteristic variables
         G = Λ*W       # The flux for the characteristic variables is Λ * L*Q
         #M = M[2:N-3]
-        G_half=self.ReconstructedFlux(G, W, M, Δx)
+        G_half=self.ReconstructedFlux(G, W, M, Δx, d, C)
         F_half = self.API.einsum('...vn,...uvn -> ...un',G_half,R)  # Brings back to conservative variables
-        return (F_half[...,1:] - F_half[...,:-1])/Δx # Derivative of Flux
+        return F_half
 
 class euler_equation_2D(equation):
     def __init__(self,API, WENO, network,γ,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default):
-        super(euler_equation_2D,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p,ε=ε)
+        super(euler_equation_2D,self).__init__(API, WENO, network, γ=γ, mapping=mapping, map_function=map_function,p=p,ε=ε)
         self.γ=API.cast(γ,dtype=dtype)
     def Pressure_1D(self,Q):
         Q1,Q2,Q3,Q4=self.API.unstack(Q,axis=-2)
@@ -316,21 +315,21 @@ class euler_equation_2D(equation):
         MV = self.API.max(max_V,axis=(-1,-2,-3),keepdims=True)
         return self.API.sqrt(MU+MV)
 
-    def ReconstructedFlux(self, F, Q, M,Δx):
+    def ReconstructedFlux(self, F, Q, M,Δx, d, C):
         F_plus  = (F + M*Q)/2
         F_minus = (F - M*Q)/2
 
         #F_plus=self.API.einsum('...ijk->...jik',F_plus)
         #F_minus=self.API.einsum('...ijk->...jik',F_minus)
         
-        F_half_plus  = self.ReconstructionMinus(F_plus[...,:-1],Δx)
-        F_half_minus = self.ReconstructionPlus(F_minus[...,1:],Δx)
+        F_half_plus  = self.ReconstructionMinus(F_plus[...,:-1],Δx, d, C)
+        F_half_minus = self.ReconstructionPlus(F_minus[...,1:],Δx, d, C)
 
         return F_half_plus + F_half_minus
 
-    def DerivadaEspacialX(self,Q, Δx, AdicionaGhostPoints, t=None):
+    def DerivadaEspacialX(self,Q, Δx, d, C, AdicionaGhostPoints, t=None, n_ghostpoints=3):
         Ord = 5 # The order of the scheme
-        Q = AdicionaGhostPoints(Q,self.API, t=t)
+        Q = AdicionaGhostPoints(Q,self.API,n=n_ghostpoints, t=t)
 
         #N = Q.shape[1]
 
@@ -344,14 +343,14 @@ class euler_equation_2D(equation):
         W = self.API.einsum('...xyvl,...xyuv -> ...xyul',Qi,L)       # Transforms into characteristic variables
         G = Λ*W       # The flux for the characteristic variables is Λ * L*Q
         #M = M[2:N-3]
-        G_half=self.ReconstructedFlux(G, W, M, Δx)
+        G_half=self.ReconstructedFlux(G, W, M, Δx, d, C)
 
         F_half = self.API.einsum('...xyv,...xyuv -> ...uxy',G_half,R)  # Brings back to conservative variables
-        return (F_half[...,1:,:] - F_half[...,:-1,:])/Δx # Derivative of Flux
+        return F_half
 
-    def DerivadaEspacialY(self,Q, Δy, AdicionaGhostPoints, t=None):
+    def DerivadaEspacialY(self,Q, Δy, d, C, AdicionaGhostPoints, t=None, n_ghostpoints=3):
         Ord = 5 # The order of the scheme
-        Q = AdicionaGhostPoints(Q,self.API,t=t)
+        Q = AdicionaGhostPoints(Q,self.API, n=n_ghostpoints,t=t)
 
         #N = Q.shape[1]
 
@@ -365,9 +364,9 @@ class euler_equation_2D(equation):
         W = self.API.einsum('...xyvl,...xyuv -> ...xyul',Qi,L)       # Transforms into characteristic variables
         G = Λ*W       # The flux for the characteristic variables is Λ * L*Q
         #M = M[2:N-3]
-        G_half=self.ReconstructedFlux(G, W, M, Δy)
+        G_half=self.ReconstructedFlux(G, W, M, Δy, d, C)
         F_half = self.API.einsum('...xyv,...xyuv -> ...uxy',G_half,R)  # Brings back to conservative variables
-        return (F_half[...,1:] - F_half[...,:-1])/Δy # Derivative of Flux
+        return F_half
 
 def slicer(data,n,API):
     helper = lambda i: data[...,i:i+n]
