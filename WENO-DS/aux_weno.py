@@ -186,7 +186,7 @@ class WENO_JS(simulation):
 
 class WENO_JS_M(simulation):
     def __init__(self,API,equation_class,γ,p=2,ε=ε_default):
-        super(WENO_JS_M,self).__init__(API=API,equation_class=equation_class,WENO=WENO_JS_scheme,γ=γ, mapping=post_mapping, map_function=Hong_mapping,network=None,p=p,ε=ε)
+        super(WENO_JS_M,self).__init__(API=API,equation_class=equation_class,WENO=WENO_JS_scheme,γ=γ, mapping=post_mapping, map_function=Henrick_mapping,network=None,p=p,ε=ε)
 
 class WENO_JS_MS(simulation):
     def __init__(self,API,equation_class,γ,p=2,ε=ε_default):
@@ -204,7 +204,7 @@ class WENO_Z(simulation):
 
 class WENO_Z_M(simulation):
     def __init__(self,API,equation_class,γ,p=2,ε=ε_default):
-        super(WENO_Z_M,self).__init__(API=API,equation_class=equation_class,WENO=WENO_Z_scheme,γ=γ, mapping=post_mapping, map_function=Hong_mapping,network=None,p=p,ε=ε)
+        super(WENO_Z_M,self).__init__(API=API,equation_class=equation_class,WENO=WENO_Z_scheme,γ=γ, mapping=post_mapping, map_function=Henrick_mapping,network=None,p=p,ε=ε)
 
 class WENO_Z_MS(simulation):
     def __init__(self,API,equation_class,γ,p=2,ε=ε_default):
@@ -222,7 +222,7 @@ class WENO_Zp(simulation):
 
 class WENO_Zp_M(simulation):
     def __init__(self,API,equation_class,γ,p=2,ε=ε_default):
-        super(WENO_Zp_M,self).__init__(API=API,equation_class=equation_class,WENO=WENO_Zp_scheme,γ=γ, mapping=post_mapping, map_function=Hong_mapping,network=None,p=p,ε=ε)
+        super(WENO_Zp_M,self).__init__(API=API,equation_class=equation_class,WENO=WENO_Zp_scheme,γ=γ, mapping=post_mapping, map_function=Henrick_mapping,network=None,p=p,ε=ε)
 
 class WENO_Zp_MS(simulation):
     def __init__(self,API,equation_class,γ,p=2,ε=ε_default):
@@ -234,13 +234,17 @@ class WENO_Zp_BI(simulation):
 
 # WENO ZC
 
+class WENO_ZC_M(simulation):
+    def __init__(self,API,equation_class,γ,p=2,ε=ε_default):
+        super(WENO_ZC_M,self).__init__(API=API,equation_class=equation_class,WENO=WENO_ZC_scheme,γ=γ, mapping=post_inv_mapping, map_function=Henrick_mapping,network=None,p=p,ε=ε)
+
 class WENO_ZC_MS(simulation):
     def __init__(self,API,equation_class,γ,p=2,ε=ε_default):
-        super(WENO_ZC_MS,self).__init__(API=API,equation_class=equation_class,WENO=WENO_Zp_scheme,γ=γ, mapping=pre_inv_mapping, map_function=Hong_mapping,network=None,p=p,ε=ε)
+        super(WENO_ZC_MS,self).__init__(API=API,equation_class=equation_class,WENO=WENO_ZC_scheme,γ=γ, mapping=pre_inv_mapping, map_function=Hong_mapping,network=None,p=p,ε=ε)
 
 class WENO_ZC_BI(simulation):
     def __init__(self,API,equation_class,γ,p=2,ε=ε_default):
-        super(WENO_ZC_BI,self).__init__(API=API,equation_class=equation_class,WENO=WENO_Zp_scheme,γ=γ, mapping=pre_inv_mapping, map_function=BI_mapping,network=None,p=p,ε=ε)
+        super(WENO_ZC_BI,self).__init__(API=API,equation_class=equation_class,WENO=WENO_ZC_scheme,γ=γ, mapping=pre_inv_mapping, map_function=BI_mapping,network=None,p=p,ε=ε)
 
 
 ## 2D
