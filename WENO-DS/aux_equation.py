@@ -40,13 +40,72 @@ class equation:
         soma = self.API.sum(α, axis=-1, keepdims=True)
         ω    = α / soma
 
+        # Calcula as estatísticas de mapeamento
+        #---------------------------------------------------------------------------------------
+#         δ1   = u[...,1:]-u[...,:-1]
+#         soma = self.API.abs(δ1)
+#         soma = self.API.sum(soma, axis=-1, keepdims=True)
+#         δ1  /= self.API.maximum(soma, Δx**5)
+        
+#         c_escala_0 = self.API.maximum(soma-(Δx**5), 0) # = 0 => Oscilações em escala pequena
+#         c_escala_1 = self.API.maximum((Δx**5)-soma, 0) # = 0 => Oscilações em escala grande
+        
+#         corte1 = 0.55555 # Maior do que 0.5
+#         corte2 = 0.55555 # Maior do que 0.5
+        
+#         c_dif1_0 = self.API.maximum(self.API.abs(δ1) - corte1, 0) # = 0 => Ausência de descontinuidades (ordem 1)
+#         c_dif1_0 = self.API.expand_dims(c_dif1_0, axis=-1)
+#         c_dif1_1 = self.API.maximum(corte1 - self.API.abs(δ1), 0) # = 0 => Presença de descontinuidades (ordem 1)
+#         c_dif1_1 = self.API.expand_dims(c_dif1_1, axis=-1)
+        
+#         c_neg1  = 1                 # Evitar compartilhar memória
+#         c_neg1 *= c_escala_0        # = 0 => Oscilações em escala pequena
+#         c_neg1 *= c_dif1_1[...,0,:] # = 0 => Presença de descontinuidades (ordem 1)
+#         c_neg1 *= c_dif1_1[...,1,:] # = 0 => Presença de descontinuidades (ordem 1)
+#         c_neg1 *= c_dif1_1[...,2,:] # = 0 => Presença de descontinuidades (ordem 1)
+#         c_neg1 *= c_dif1_1[...,3,:] # = 0 => Presença de descontinuidades (ordem 1)
+        
+#         ω  = c_escala_1                     * self.API.constant([1, 6, 3], dtype=dtype)
+#         ω += c_escala_0 * c_dif1_0[...,0,:] * self.API.constant([0, 1, 1], dtype=dtype) 
+#         ω += c_escala_0 * c_dif1_0[...,1,:] * self.API.constant([0, 0, 1], dtype=dtype) 
+#         ω += c_escala_0 * c_dif1_0[...,2,:] * self.API.constant([1, 0, 0], dtype=dtype) 
+#         ω += c_escala_0 * c_dif1_0[...,3,:] * self.API.constant([1, 3, 0], dtype=dtype)
+        
+# #         print(δ1[110:130,...])
+        
+#         δ2   = δ1[...,1:]-δ1[...,:-1]
+#         soma = self.API.abs(δ2)
+#         soma = self.API.sum(soma, axis=-1, keepdims=True)
+#         δ2  /= self.API.maximum(soma, Δx**5)
+        
+#         c_dif2_0 = self.API.maximum(self.API.abs(δ2) - corte2, 0) # = 0 => Ausência de descontinuidades (ordem 2)
+#         c_dif2_0 = self.API.expand_dims(c_dif2_0, axis=-1)
+#         c_dif2_1 = self.API.maximum(corte2 - self.API.abs(δ2), 0) # = 0 => Presença de descontinuidades (ordem 2)
+#         c_dif2_1 = self.API.expand_dims(c_dif2_1, axis=-1)
+        
+#         c_neg2  = 1                 # Evitar compartilhar memória
+#         c_neg2 *= c_neg1            # = 0 => Escala pequena ou descontinuidades (Ordem 1)
+#         c_neg2 *= c_dif2_1[...,0,:] # = 0 => Presença de descontinuidades (ordem 2)
+#         c_neg2 *= c_dif2_1[...,1,:] # = 0 => Presença de descontinuidades (ordem 2)
+#         c_neg2 *= c_dif2_1[...,2,:] # = 0 => Presença de descontinuidades (ordem 2)
+        
+#         ω += c_neg1 * c_dif2_0[...,0,:] * self.API.constant([0, 0, 1], dtype=dtype) 
+#         ω += c_neg1 * c_dif2_0[...,1,:] * self.API.constant([0, 1, 0], dtype=dtype) # Simula o WENO-Z+
+#         ω += c_neg1 * c_dif2_0[...,2,:] * self.API.constant([1, 0, 0], dtype=dtype)
+#         ω += c_neg2                     * self.API.constant([1, 3, 6], dtype=dtype)
+        
+#         soma = self.API.sum(ω, axis=-1, keepdims=True)
+#         ω   /= soma
+#         α, β, δ, λ = (0, 0, 0, 0)
+        #---------------------------------------------------------------------------------------
+        
         return ω, α, β, δ, λ
 
     def ReconstructionMinus(self,u,Δx):
         
         ω = self.Get_weights_graph(u,Δx)[0]
         # Calcula os fhat em cada subestêncil
-        fhat = self.API.matmul(u, C)
+        fhat = self.API.matmul(u, C1)
         # Calcula o fhat do estêncil todo
         fhat = self.API.sum(ω * fhat, axis=-1)
         return fhat
@@ -67,10 +126,9 @@ class equation:
         f_half_minus = self.ReconstructionMinus(f_plus[...,:-1],Δx) 
         f_half_plus  = self.ReconstructionPlus( f_minus[...,1:],Δx)
         Fhat         = (f_half_minus + f_half_plus)
-
+        
         # Calculando uma estimava da derivada a partir de diferenças finitas
         Fhat = (Fhat[...,1:] - Fhat[...,:-1]) / Δx
-
         return Fhat
 
 class transp_equation(equation):

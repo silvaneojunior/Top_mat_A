@@ -121,6 +121,7 @@ class simulation:
             self.API.pretty_print(self.API.squeeze(t), end='\r')
         
         return u
+    
     def Sim_step_graph(self,u, Δt, Δx, fronteira, t=None):
         u1 = u - Δt*self.equation.DerivadaEspacial(u, Δx, fronteira, t=t)
         u2 = (3*u + u1 - Δt*self.equation.DerivadaEspacial(u1, Δx, fronteira, t=t)) / 4.0
