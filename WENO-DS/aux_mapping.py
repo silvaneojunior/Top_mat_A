@@ -1,4 +1,5 @@
-from aux_base import dtype,B
+from aux_base import dtype
+from aux_base import B as B_default
 import numpy as np
 
 """
@@ -7,9 +8,10 @@ utilizando operações tensoriais, uma vez que permite a integração
 com o tensorflow
 """
 
-null_mapping = lambda λ, API, map_function: API.matmul(λ, B)
 
-def post_mapping(λ, API, map_function):
+null_mapping = lambda λ, API, map_function, B=B_default: API.matmul(λ, B)
+    
+def post_mapping(λ, API, map_function, B=B_default):
 
     α    = API.matmul(λ, B1)
     soma = API.sum(α, axis=-1, keepdims=True)
@@ -18,7 +20,7 @@ def post_mapping(λ, API, map_function):
 
     return α
 
-def pre_mapping(λ, API, map_function):
+def pre_mapping(λ, API, map_function, B=B_default):
     
     soma = API.sum(λ, axis=-1, keepdims=True)
     ω    = λ / soma
@@ -27,7 +29,7 @@ def pre_mapping(λ, API, map_function):
 
     return α
 
-def post_inv_mapping(λ, API, map_function):
+def post_inv_mapping(λ, API, map_function, B=B_default):
 
     α    = API.matmul(λ, B1)
     soma = API.sum(α, axis=-1, keepdims=True)
@@ -37,7 +39,7 @@ def post_inv_mapping(λ, API, map_function):
 
     return α
 
-def pre_inv_mapping(λ, API, map_function):
+def pre_inv_mapping(λ, API, map_function, B=B_default):
 
     soma = API.sum(λ, axis=-1, keepdims=True)
     ω    = λ / soma
