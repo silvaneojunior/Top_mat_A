@@ -1,5 +1,4 @@
 from aux_base import dtype
-from aux_base import B as B_default
 import numpy as np
 
 """
@@ -9,29 +8,29 @@ com o tensorflow
 """
 
 
-null_mapping = lambda λ, API, map_function, B=B_default: API.matmul(λ, B)
+null_mapping = lambda λ, API, map_function, d: API.matmul(λ, d)
     
-def post_mapping(λ, API, map_function, B=B_default):
+def post_mapping(λ, API, map_function, d):
 
-    α    = API.matmul(λ, B1)
+    α    = API.matmul(λ, d)
     soma = API.sum(α, axis=-1, keepdims=True)
     ω    = α / soma
     α    = map_function(ω, API)
 
     return α
 
-def pre_mapping(λ, API, map_function, B=B_default):
+def pre_mapping(λ, API, map_function, d):
     
     soma = API.sum(λ, axis=-1, keepdims=True)
     ω    = λ / soma
     α    = map_function(ω, API)
-    α    = API.matmul(α, B1)
+    α    = API.matmul(α, d)
 
     return α
 
-def post_inv_mapping(λ, API, map_function, B=B_default):
+def post_inv_mapping(λ, API, map_function, d):
 
-    α    = API.matmul(λ, B1)
+    α    = API.matmul(λ, d)
     soma = API.sum(α, axis=-1, keepdims=True)
     ω    = α / soma
     α    = map_function(ω, API)
@@ -39,12 +38,12 @@ def post_inv_mapping(λ, API, map_function, B=B_default):
 
     return α
 
-def pre_inv_mapping(λ, API, map_function, B=B_default):
+def pre_inv_mapping(λ, API, map_function, d):
 
     soma = API.sum(λ, axis=-1, keepdims=True)
     ω    = λ / soma
     α    = map_function(ω, API)
-    α    = API.matmul(α, B1)
+    α    = API.matmul(α, d)
     α    = α * soma
 
     return α

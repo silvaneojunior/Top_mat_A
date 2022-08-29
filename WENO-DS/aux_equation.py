@@ -1,6 +1,6 @@
 from math import gamma
 from aux_mapping import null_mapping
-from aux_base import dtype, C, ε_default, const, API_Numpy
+from aux_base import dtype, ε_default, const, API_Numpy
 
 class equation:
     def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default,γ=None):
@@ -14,7 +14,7 @@ class equation:
         self.mapping=mapping
         self.map_function=map_function
 
-    def Get_weights_graph(self,u,Δx, d,AdicionaGhostPoints=None,t=None):
+    def Get_weights_graph(self, u, Δx, d, AdicionaGhostPoints=None,t=None):
 
         if AdicionaGhostPoints is not None:
             u = AdicionaGhostPoints(u,self.API,t=t,n=2,Δx=Δx)
@@ -38,137 +38,91 @@ class equation:
         
         β = self.API.stack([β0, β1, β2], axis=-1)
         
-        α, λ = self.WENO(β,δ,d,self.API,Δx=Δx,mapping=self.mapping,map_function=self.map_function,p=self.p,ε=self.ε)
+        α, λ = self.WENO(β, δ, d, self.API, Δx=Δx, mapping=self.mapping, map_function=self.map_function, p=self.p, ε=self.ε)
 
         soma = self.API.sum(α, axis=-1, keepdims=True)
         ω    = α / soma
-
-        # Calcula as estatísticas de mapeamento
-        #---------------------------------------------------------------------------------------
-#         δ1   = u[...,1:]-u[...,:-1]
-#         soma = self.API.abs(δ1)
-#         soma = self.API.sum(soma, axis=-1, keepdims=True)
-#         δ1  /= self.API.maximum(soma, Δx**5)
-        
-#         c_escala_0 = self.API.maximum(soma-(Δx**5), 0) # = 0 => Oscilações em escala pequena
-#         c_escala_1 = self.API.maximum((Δx**5)-soma, 0) # = 0 => Oscilações em escala grande
-        
-#         corte1 = 0.55555 # Maior do que 0.5
-#         corte2 = 0.55555 # Maior do que 0.5
-        
-#         c_dif1_0 = self.API.maximum(self.API.abs(δ1) - corte1, 0) # = 0 => Ausência de descontinuidades (ordem 1)
-#         c_dif1_0 = self.API.expand_dims(c_dif1_0, axis=-1)
-#         c_dif1_1 = self.API.maximum(corte1 - self.API.abs(δ1), 0) # = 0 => Presença de descontinuidades (ordem 1)
-#         c_dif1_1 = self.API.expand_dims(c_dif1_1, axis=-1)
-        
-#         c_neg1  = 1                 # Evitar compartilhar memória
-#         c_neg1 *= c_escala_0        # = 0 => Oscilações em escala pequena
-#         c_neg1 *= c_dif1_1[...,0,:] # = 0 => Presença de descontinuidades (ordem 1)
-#         c_neg1 *= c_dif1_1[...,1,:] # = 0 => Presença de descontinuidades (ordem 1)
-#         c_neg1 *= c_dif1_1[...,2,:] # = 0 => Presença de descontinuidades (ordem 1)
-#         c_neg1 *= c_dif1_1[...,3,:] # = 0 => Presença de descontinuidades (ordem 1)
-        
-#         ω  = c_escala_1                     * self.API.constant([1, 6, 3], dtype=dtype)
-#         ω += c_escala_0 * c_dif1_0[...,0,:] * self.API.constant([0, 1, 1], dtype=dtype) 
-#         ω += c_escala_0 * c_dif1_0[...,1,:] * self.API.constant([0, 0, 1], dtype=dtype) 
-#         ω += c_escala_0 * c_dif1_0[...,2,:] * self.API.constant([1, 0, 0], dtype=dtype) 
-#         ω += c_escala_0 * c_dif1_0[...,3,:] * self.API.constant([1, 3, 0], dtype=dtype)
-        
-# #         print(δ1[110:130,...])
-        
-#         δ2   = δ1[...,1:]-δ1[...,:-1]
-#         soma = self.API.abs(δ2)
-#         soma = self.API.sum(soma, axis=-1, keepdims=True)
-#         δ2  /= self.API.maximum(soma, Δx**5)
-        
-#         c_dif2_0 = self.API.maximum(self.API.abs(δ2) - corte2, 0) # = 0 => Ausência de descontinuidades (ordem 2)
-#         c_dif2_0 = self.API.expand_dims(c_dif2_0, axis=-1)
-#         c_dif2_1 = self.API.maximum(corte2 - self.API.abs(δ2), 0) # = 0 => Presença de descontinuidades (ordem 2)
-#         c_dif2_1 = self.API.expand_dims(c_dif2_1, axis=-1)
-        
-#         c_neg2  = 1                 # Evitar compartilhar memória
-#         c_neg2 *= c_neg1            # = 0 => Escala pequena ou descontinuidades (Ordem 1)
-#         c_neg2 *= c_dif2_1[...,0,:] # = 0 => Presença de descontinuidades (ordem 2)
-#         c_neg2 *= c_dif2_1[...,1,:] # = 0 => Presença de descontinuidades (ordem 2)
-#         c_neg2 *= c_dif2_1[...,2,:] # = 0 => Presença de descontinuidades (ordem 2)
-        
-#         ω += c_neg1 * c_dif2_0[...,0,:] * self.API.constant([0, 0, 1], dtype=dtype) 
-#         ω += c_neg1 * c_dif2_0[...,1,:] * self.API.constant([0, 1, 0], dtype=dtype) # Simula o WENO-Z+
-#         ω += c_neg1 * c_dif2_0[...,2,:] * self.API.constant([1, 0, 0], dtype=dtype)
-#         ω += c_neg2                     * self.API.constant([1, 3, 6], dtype=dtype)
-        
-#         soma = self.API.sum(ω, axis=-1, keepdims=True)
-#         ω   /= soma
-#         α, β, δ, λ = (0, 0, 0, 0)
-        #---------------------------------------------------------------------------------------
         
         return ω, α, β, δ, λ
 
-    def ReconstructionMinus(self,u,Δx):
+    def ReconstructionMinus(self, u, Δx, d, C):
         
-        ω = self.Get_weights_graph(u,Δx,d)[0]
-
+        ω = self.Get_weights_graph(u, Δx, d)[0]
         # Calcula os fhat em cada subestêncil
-        fhat = self.API.matmul(u, C1)
+        fhat = self.API.matmul(u, C)
         # Calcula o fhat do estêncil todo
         fhat = self.API.sum(ω * fhat, axis=-1)
+        
         return fhat
 
-    def ReconstructionPlus(self,u,Δx, d, C):
-        fhat = self.ReconstructionMinus(self.API.reverse(u,axis=[-1]),Δx, d, C)
+    def ReconstructionPlus(self, u, Δx, d, C):
+        fhat = self.ReconstructionMinus(self.API.reverse(u,axis=[-1]), Δx, d, C)
         return fhat
         
     def flux_sep(self,U):
         pass
 
-    def DerivadaEspacial(self, U, Δx, AdicionaGhostPoints, d, C, t=None, n_ghostpoints=3):
+    def DerivadaEspacial(self, U, Δx, AdicionaGhostPoints, d, C, n_sep=6, t=None, n_ghostpoints=3):
         U = AdicionaGhostPoints(U,self.API,n=n_ghostpoints,t=t) # Estende a malha de pontos de acordo com as condições de fronteira
-
-        f_plus,f_minus=self.flux_sep(U)
+        
+        f_plus, f_minus = self.flux_sep(U, n=n_sep)
 
         # Aplicar WENO em cada variável característica separadamente para depois juntar
-        f_half_minus = self.ReconstructionMinus(f_plus[...,:-1],Δx, d, C) 
-        f_half_plus  = self.ReconstructionPlus( f_minus[...,1:],Δx, d, C)
-        Fhat         = (f_half_minus + f_half_plus)
+        if n_sep == 6:
+            f_half_minus = self.ReconstructionMinus(f_plus[...,:-1], Δx, d, C) 
+            f_half_plus  = self.ReconstructionPlus( f_minus[...,1:], Δx, d, C)
+        elif n_sep == 5:
+            f_half_minus = self.ReconstructionMinus(f_plus, Δx, d, C)
+            f_half_plus  = self.ReconstructionPlus(f_minus, Δx, d, C)
+        
+        Fhat = (f_half_minus + f_half_plus)
 
         return Fhat
 
 class transp_equation(equation):
+    
     def maximum_speed(self,U):
-        return self.API.cast(1,dtype)
-    def flux_sep(self,U):
-        U  = slicer(U,6,self.API)
+        return self.API.cast(1, dtype)
+    
+    def flux_sep(self, U, n=6):
+        U  = slicer(U, n, self.API)
         # Setup para equação do transporte
         M = self.maximum_speed(U)                          # Valor utilizado para realizar a separação de fluxo
         f_plus  = (U + M*U)/2 # Fluxo positivo
         f_minus = (U - M*U)/2 # Fluxo negativo
-        return f_plus,f_minus
+        return f_plus, f_minus
     
 class burgers_equation(equation):
+    
     def maximum_speed(self,U):
         return self.API.max(self.API.abs(U),axis=-1,keepdims=True)
-    def flux_sep(self,U):
+    
+    def flux_sep(self, U, n=6):
         M = self.maximum_speed(U)                          # Valor utilizado para realizar a separação de fluxo
-        M = self.API.expand_dims(M,-1)
-        U = slicer(U,6,self.API)
+        M = self.API.expand_dims(M, -1)
+        U = slicer(U, n, self.API)
         # Setup para equação do transporte
         f_plus  = (U**2/2 + M*U) / 2                      # Fluxo positivo
         f_minus = (U**2/2 - M*U) / 2                      # Fluxo negativo
-        return f_plus,f_minus
+        return f_plus, f_minus
 
 class diff_equation(equation):
-    def maximum_speed(self,U):
+    
+    def maximum_speed(self, U):
         return 1
-    def flux_sep(self,U):
-        U = slicer(U,6,self.API)
+    
+    def flux_sep(self, U, n=6):
+        U = slicer(U, n, self.API)
         f_plus  = U / 2                      # Fluxo positivo
         f_minus = U / 2                      # Fluxo negativo
         return f_plus,f_minus
 
 class euler_equation(equation):
-    def __init__(self,API, WENO, network,mapping=null_mapping, map_function=lambda x:x,p=2,ε=ε_default,γ=const(14,API_Numpy)/10):
-        super(euler_equation,self).__init__(API, WENO, network,mapping=mapping, map_function=map_function,p=p,ε=ε,γ=γ)
-        self.γ=γ
+    
+    def __init__(self, API, WENO, network,mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default, γ=const(14, API_Numpy)/10):
+        super(euler_equation,self).__init__(API, WENO, network, mapping=mapping, map_function=map_function, p=p, ε=ε, γ=γ)
+        self.γ = γ
+        
     def Pressure(self,Q):
         Q0,Q1,Q2=self.API.unstack(Q,axis=-2)
         a=self.γ-1.0
