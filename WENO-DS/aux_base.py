@@ -10,10 +10,10 @@ def const(x, API):
 
 ε_default = np.asarray(10, dtype=dtype)**np.asarray(-40, dtype=dtype)
 
-d1       = np.asarray([[ 1,0,0],[0, 6,0],[0,0, 3]], dtype=dtype)/10 # Matriz B1
-d2_plus  = np.asarray([[-2,0,0],[0,19,0],[0,0,-2]], dtype=dtype)/15 # Matriz B2
-d2_minus = np.asarray([[-2,0,0],[0,19,0],[0,0,-2]], dtype=dtype)/15 # Matriz B2
-d3       = np.asarray([[ 7,0,0],[0,15,0],[0,0, 8]], dtype=dtype)/30 # Matriz B3
+d1       = np.asarray([[1,0,0],[0, 6,0],[0,0,3]], dtype=dtype)/10 # Matriz B1
+d2_plus  = np.asarray([[1,0,0],[0,19,0],[0,0,1]], dtype=dtype)/21 # Matriz B2
+d2_minus = np.asarray([[4,0,0],[0,19,0],[0,0,4]], dtype=dtype)/27 # Matriz B2
+d3       = np.asarray([[7,0,0],[0,15,0],[0,0,8]], dtype=dtype)/30 # Matriz B3
 
 sigma_plus  = np.asarray(14, dtype=dtype)/5
 sigma_minus = np.asarray( 9, dtype=dtype)/5

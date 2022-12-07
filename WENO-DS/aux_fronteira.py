@@ -56,12 +56,13 @@ def FronteiraReflexiva(U, API, n=3, t=None, Δx=None):
     return U
 
 def TitarevToroBoundary(U, API, n=3, t=None, Δx=None):
-        
-    xr = API.constant([[5+Δx, 5+2*Δx, 5+3*Δx]])
+    
+#     xr = API.constant([[5+Δx, 5+2*Δx, 5+3*Δx]])
+    xr = API.expand_dims(5+API.range(1, n+1)*Δx, axis=0)
     
     ρ = 1.0 + API.sin(20.0*API.pi*xr)/10
-    u = API.zeros([1,3])
-    p = API.ones([1,3])
+    u = API.zeros([1,n])
+    p = API.ones([1,n])
     
     γ  = API.constant(14.0)/10
     ρu = ρ*u
@@ -74,7 +75,5 @@ def TitarevToroBoundary(U, API, n=3, t=None, Δx=None):
         U,
         UR],
         axis=-1)
-    
-#     print(U[:,-5:])
     
     return U
