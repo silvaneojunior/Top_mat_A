@@ -42,41 +42,57 @@ def WENO_ZD_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambd
     
     return α, λ
 
-# def WENO_ZD2_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+def WENO_ZD1_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
     
-#     # Ajustando inconsistência de escala dos betas
-#     β    = API.stack([β[...,0], β[...,1], β[...,2]], axis=-1)
-#     # Calcula o indicador de suavidade global
-#     τ = API.abs(β[...,0:1] - β[...,2:3])
-#     # Calcula os pesos do WENO-Z
-#     λ = 1 + (τ/(β + ε))**p
-#     α = mapping(λ, API, map_function, d)
+    c = 2
+    # Ajustando inconsistência de escala dos betas
+    β = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
+    # Calcula o indicador de suavidade global
+    τ = API.abs(β[...,0:1] - β[...,2:3])
+    # Calcula os pesos do WENO-Z
+    λ = 1 + (τ/(β + ε))**p
+    α = mapping(λ, API, map_function, d)
     
-#     return α, λ
+    return α, λ
 
-# def WENO_ZD3_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+def WENO_ZD2_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
     
-#     # Ajustando inconsistência de escala dos betas
-#     β = API.stack([β[...,0], β[...,1], β[...,2]], axis=-1)
-#     # Calcula o indicador de suavidade global
-#     τ = API.abs(β[...,0:1] - β[...,2:3])
-#     # Calcula os pesos do WENO-Z
-#     λ = 1 + (τ/(β + ε))**p
-#     α = mapping(λ, API, map_function, d)
+    c = 3
+    # Ajustando inconsistência de escala dos betas
+    β    = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
+    # Calcula o indicador de suavidade global
+    τ = API.abs(β[...,0:1] - β[...,2:3])
+    # Calcula os pesos do WENO-Z
+    λ = 1 + (τ/(β + ε))**p
+    α = mapping(λ, API, map_function, d)
     
-#     return α, λ
+    return α, λ
 
-# def WENO_ZD4_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
-
-#     # Ajustando inconsistência de escala dos betas
-#     β    = API.stack([β[...,0], β[...,1], β[...,2]], axis=-1)
-#     # Calcula o indicador de suavidade global
-#     τ = API.abs(β[...,0:1] - β[...,2:3])
-#     # Calcula os pesos do WENO-Z
-#     λ = 1 + (τ/(β + ε))**p
-#     α = mapping(λ, API, map_function, d)
+def WENO_ZD3_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
     
-#     return α, λ
+    c = 4
+    # Ajustando inconsistência de escala dos betas
+    β = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
+    # Calcula o indicador de suavidade global
+    τ = API.abs(β[...,0:1] - β[...,2:3])
+    # Calcula os pesos do WENO-Z
+    λ = 1 + (τ/(β + ε))**p
+    α = mapping(λ, API, map_function, d)
+    
+    return α, λ
+
+def WENO_ZD4_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+
+    c = 5
+    # Ajustando inconsistência de escala dos betas
+    β = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
+    # Calcula o indicador de suavidade global
+    τ = API.abs(β[...,0:1] - β[...,2:3])
+    # Calcula os pesos do WENO-Z
+    λ = 1 + (τ/(β + ε))**p
+    α = mapping(λ, API, map_function, d)
+    
+    return α, λ
 
 def WENO_ZDp_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
     
