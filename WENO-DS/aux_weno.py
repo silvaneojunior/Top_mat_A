@@ -385,6 +385,12 @@ class simulation_2D(simulation):
         duX=self.DerivadaEspacialX(u, Δx, fronteiraX, t=t)
         duY=self.DerivadaEspacialY(u, Δy, fronteiraY, t=t)
         
+        # self.API.pretty_print(self.API.shape(u))
+        # self.API.pretty_print(self.API.shape(Δt))
+        # self.API.pretty_print(self.API.shape(Force(u,self.API)))
+        # self.API.pretty_print(self.API.shape(duX))
+        # self.API.pretty_print(self.API.shape(duY))
+        
         u1 = u - Δt*(duX+duY-Force(u,self.API))
 
         du1X=self.DerivadaEspacialX(u1, Δx, fronteiraX, t=t)
