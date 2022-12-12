@@ -42,70 +42,171 @@ def WENO_ZD_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambd
     
     return α, λ
 
-def WENO_ZD1_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+# def WENO_ZD1_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
     
-    c = 2
-    # Ajustando inconsistência de escala dos betas
-    β = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
-    # Calcula o indicador de suavidade global
-    τ = API.abs(β[...,0:1] - β[...,2:3])
-    # Calcula os pesos do WENO-Z
-    λ = 1 + (τ/(β + ε))**p
-    α = mapping(λ, API, map_function, d)
+#     c = 2
+#     # Ajustando inconsistência de escala dos betas
+#     β = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
+#     # Calcula o indicador de suavidade global
+#     τ = API.abs(β[...,0:1] - β[...,2:3])
+#     # Calcula os pesos do WENO-Z
+#     λ = 1 + (τ/(β + ε))**p
+#     α = mapping(λ, API, map_function, d)
     
-    return α, λ
+#     return α, λ
 
-def WENO_ZD2_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+# def WENO_ZD2_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
     
-    c = 3
-    # Ajustando inconsistência de escala dos betas
-    β    = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
-    # Calcula o indicador de suavidade global
-    τ = API.abs(β[...,0:1] - β[...,2:3])
-    # Calcula os pesos do WENO-Z
-    λ = 1 + (τ/(β + ε))**p
-    α = mapping(λ, API, map_function, d)
+#     c = 3
+#     # Ajustando inconsistência de escala dos betas
+#     β    = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
+#     # Calcula o indicador de suavidade global
+#     τ = API.abs(β[...,0:1] - β[...,2:3])
+#     # Calcula os pesos do WENO-Z
+#     λ = 1 + (τ/(β + ε))**p
+#     α = mapping(λ, API, map_function, d)
     
-    return α, λ
+#     return α, λ
 
-def WENO_ZD3_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+# def WENO_ZD3_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
     
-    c = 4
-    # Ajustando inconsistência de escala dos betas
-    β = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
-    # Calcula o indicador de suavidade global
-    τ = API.abs(β[...,0:1] - β[...,2:3])
-    # Calcula os pesos do WENO-Z
-    λ = 1 + (τ/(β + ε))**p
-    α = mapping(λ, API, map_function, d)
+#     c = 4
+#     # Ajustando inconsistência de escala dos betas
+#     β = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
+#     # Calcula o indicador de suavidade global
+#     τ = API.abs(β[...,0:1] - β[...,2:3])
+#     # Calcula os pesos do WENO-Z
+#     λ = 1 + (τ/(β + ε))**p
+#     α = mapping(λ, API, map_function, d)
     
-    return α, λ
+#     return α, λ
 
-def WENO_ZD4_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+# def WENO_ZD4_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
 
-    c = 5
-    # Ajustando inconsistência de escala dos betas
-    β = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
-    # Calcula o indicador de suavidade global
-    τ = API.abs(β[...,0:1] - β[...,2:3])
-    # Calcula os pesos do WENO-Z
-    λ = 1 + (τ/(β + ε))**p
-    α = mapping(λ, API, map_function, d)
+#     c = 5
+#     # Ajustando inconsistência de escala dos betas
+#     β = API.stack([β[...,0], c*β[...,1], β[...,2]], axis=-1)
+#     # Calcula o indicador de suavidade global
+#     τ = API.abs(β[...,0:1] - β[...,2:3])
+#     # Calcula os pesos do WENO-Z
+#     λ = 1 + (τ/(β + ε))**p
+#     α = mapping(λ, API, map_function, d)
     
-    return α, λ
+#     return α, λ
 
 def WENO_ZDp_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
     
-    # Normalizing the betas
-    soma = API.sum(β, axis=-1, keepdims=True)
-    β    = β / (soma + ε)
+    c = 0.1
+    ones_ref = API.ones(API.shape(β[...,0]), dtype=β.dtype)
+    
+    # Calculando a soma dos betas
+    β_sum = API.sum(β, axis=-1, keepdims=True) + ε
     # Calcula o indicador de suavidade global
     τ = API.abs(β[...,0:1] - β[...,2:3])
     # Calcula os pesos do WENO-Z+
-    ξ = (β/(τ + 0.3))
+    ξ = (β/(τ + 0.3*β_sum))
     # β1 original: c = 0.25, β1 alterado: c = 0.4 com desagravamento de 0.975
-    β = API.stack([β[...,0], API.minimum(1, 0.5 + 0.1*API.sum(ξ, axis=-1))*β[...,1], β[...,2]], axis=-1)
-    λ = 1 + (τ/(β + ε))**p + ξ
+    c = API.stack([ones_ref, API.minimum(const(1.0, API), 0.5 + c*API.sum(ξ, axis=-1)), ones_ref], axis=-1)
+    λ = 1 + (τ/(c*β + ε*β_sum))**p + ξ
+    α = mapping(λ, API, map_function, d)
+    
+    return α, λ
+
+# def WENO_ZDp1_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+    
+#     c = 1/2
+#     ones_ref = API.ones(API.shape(β[...,0]), dtype=β.dtype)
+    
+#     # Calculando a soma dos betas
+#     β_sum = API.sum(β, axis=-1, keepdims=True) + ε
+#     # Calcula o indicador de suavidade global
+#     τ = API.abs(β[...,0:1] - β[...,2:3])
+#     # Calcula os pesos do WENO-Z+
+#     ξ = (β/(τ + 0.3*β_sum))
+#     # β1 original: c = 0.25, β1 alterado: c = 0.4 com desagravamento de 0.975
+#     c = API.stack([ones_ref, API.minimum(1.0, 0.5 + c*API.sum(ξ, axis=-1)), ones_ref], axis=-1)
+#     λ = 1 + (τ/(c*β + ε*β_sum))**p + ξ
+#     α = mapping(λ, API, map_function, d)
+    
+#     return α, λ
+
+# def WENO_ZDp2_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+    
+#     c = 1/3
+#     ones_ref = API.ones(API.shape(β[...,0]), dtype=β.dtype)
+    
+#     # Calculando a soma dos betas
+#     β_sum = API.sum(β, axis=-1, keepdims=True) + ε
+#     # Calcula o indicador de suavidade global
+#     τ = API.abs(β[...,0:1] - β[...,2:3])
+#     # Calcula os pesos do WENO-Z+
+#     ξ = (β/(τ + 0.3*β_sum))
+#     # β1 original: c = 0.25, β1 alterado: c = 0.4 com desagravamento de 0.975
+#     c = API.stack([ones_ref, API.minimum(1.0, 0.5 + c*API.sum(ξ, axis=-1)), ones_ref], axis=-1)
+#     λ = 1 + (τ/(c*β + ε*β_sum))**p + ξ
+#     α = mapping(λ, API, map_function, d)
+    
+#     return α, λ
+
+# def WENO_ZDp3_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+    
+#     c = 1/4
+#     ones_ref = API.ones(API.shape(β[...,0]), dtype=β.dtype)
+    
+#     # Calculando a soma dos betas
+#     β_sum = API.sum(β, axis=-1, keepdims=True) + ε
+#     # Calcula o indicador de suavidade global
+#     τ = API.abs(β[...,0:1] - β[...,2:3])
+#     # Calcula os pesos do WENO-Z+
+#     ξ = (β/(τ + 0.3*β_sum))
+#     # β1 original: c = 0.25, β1 alterado: c = 0.4 com desagravamento de 0.975
+#     c = API.stack([ones_ref, API.minimum(1.0, 0.5 + c*API.sum(ξ, axis=-1)), ones_ref], axis=-1)
+#     λ = 1 + (τ/(c*β + ε*β_sum))**p + ξ
+#     α = mapping(λ, API, map_function, d)
+    
+#     return α, λ
+
+# def WENO_ZDp4_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+    
+#     c = 1/5
+#     ones_ref = API.ones(API.shape(β[...,0]), dtype=β.dtype)
+    
+#     # Calculando a soma dos betas
+#     β_sum = API.sum(β, axis=-1, keepdims=True) + ε
+#     # Calcula o indicador de suavidade global
+#     τ = API.abs(β[...,0:1] - β[...,2:3])
+#     # Calcula os pesos do WENO-Z+
+#     ξ = (β/(τ + 0.3*β_sum))
+#     # β1 original: c = 0.25, β1 alterado: c = 0.4 com desagravamento de 0.975
+#     c = API.stack([ones_ref, API.minimum(1.0, 0.5 + c*API.sum(ξ, axis=-1)), ones_ref], axis=-1)
+#     λ = 1 + (τ/(c*β + ε*β_sum))**p + ξ
+#     α = mapping(λ, API, map_function, d)
+    
+#     return α, λ
+
+# def WENO_ZDp_old_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+    
+#     # Normalizing the betas
+#     soma = API.sum(β, axis=-1, keepdims=True)
+#     β    = β / (soma + ε)
+#     # Calcula o indicador de suavidade global
+#     τ = API.abs(β[...,0:1] - β[...,2:3])
+#     # Calcula os pesos do WENO-Z+
+#     ξ = (β/(τ + 0.3))
+#     # β1 original: c = 0.25, β1 alterado: c = 0.4 com desagravamento de 0.975
+#     β = API.stack([β[...,0], API.minimum(1, 0.5 + 0.1*API.sum(ξ, axis=-1))*β[...,1], β[...,2]], axis=-1)
+#     λ = 1 + (τ/(β + ε))**p + ξ
+#     α = mapping(λ, API, map_function, d)
+    
+#     return α, λ
+
+def WENO_Zp_teste_scheme(β, δ, d, API, Δx, mapping=null_mapping, map_function=lambda x:x, p=2, ε=ε_default):
+    
+    β = β*(δ+const(1, API)/10)
+    # Calcula o indicador de suavidade global
+    τ = API.abs(β[...,0:1] - β[...,2:3])
+    # Calcula os pesos do WENO-Z+
+    λ = 1 + (τ/(β + 10e-40))**p + (Δx**(const(2, API)/3))*(β/(τ + ε))
     α = mapping(λ, API, map_function, d)
     
     return α, λ
@@ -356,15 +457,15 @@ class simulation_2D(simulation):
 
         self.DerivadaWrapperX   = lambda F_half, Δx: (F_half[...,1:,:] - F_half[...,:-1,:])/Δx # Derivative of Flux
 
-        self.DerivadaEspacialX_graph = lambda u, Δx, fronteira, t: self.DerivadaWrapperX(self.equation.DerivadaEspacialX(u, Δx, AdicionaGhostPoints=fronteira,d=self.d, C=self.C, t=t, n_ghostpoints=self.n_ghostpoints),Δx)
+        self.DerivadaEspacialX_graph = lambda u, Δx, fronteira, t: self.DerivadaWrapperX(self.equation.DerivadaEspacialX(u, Δx, AdicionaGhostPoints=fronteira, d=self.d, C=self.C, t=t, n_ghostpoints=self.n_ghostpoints), Δx)
         self.DerivadaEspacialX       = API.function(self.DerivadaEspacialX_graph)
 
         self.DerivadaWrapperY   = lambda F_half, Δx: (F_half[...,1:] - F_half[...,:-1])/Δx # Derivative of Flux
 
-        self.DerivadaEspacialY_graph = lambda u, Δx, fronteira, t: self.DerivadaWrapperY(self.equation.DerivadaEspacialY(u, Δx, AdicionaGhostPoints=fronteira,d=self.d, C=self.C, t=t, n_ghostpoints=self.n_ghostpoints),Δx)
+        self.DerivadaEspacialY_graph = lambda u, Δx, fronteira, t: self.DerivadaWrapperY(self.equation.DerivadaEspacialY(u, Δx, AdicionaGhostPoints=fronteira, d=self.d, C=self.C, t=t, n_ghostpoints=self.n_ghostpoints), Δx)
         self.DerivadaEspacialY       = API.function(self.DerivadaEspacialY_graph)
 
-    def Sim_graph(self,u, t_final, Δx, Δy, CFL, fronteiraX, fronteiraY,Force): 
+    def Sim_graph(self,u, t_final, Δx, Δy, CFL, fronteiraX, fronteiraY, Force): 
         
         t = 0.0*self.equation.maximum_speed(u) # Instante de tempo incial para a computação
         self.API.pretty_print(self.API.squeeze(t),end='\r')

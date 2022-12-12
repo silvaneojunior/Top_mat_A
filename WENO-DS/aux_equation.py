@@ -51,7 +51,7 @@ class equation:
         # Calcula os fhat em cada subestêncil
         fhat = self.API.matmul(u, C)
         # Calcula o fhat do estêncil todo
-        fhat = self.API.sum(ω * fhat, axis=-1)
+        fhat = self.API.sum(ω*fhat, axis=-1)
         
         return fhat
     
@@ -119,7 +119,7 @@ class equation_RK(equation):
         # Calcula os fhat em cada subestêncil
         fhat = self.API.matmul(u, C)
         # Calcula o fhat do estêncil todo
-        fhat = self.API.sum(ω * fhat, axis=-1)
+        fhat = self.API.sum(ω*fhat, axis=-1)
         
         return fhat
     
@@ -462,8 +462,8 @@ class euler_equation(equation):
         R, L, Λ = self.Eigensystem(Qi) # (n, 3, 3), (n, 3, 3), (n, 3, 3)
         
         M = self.API.max(self.API.abs(Λ), axis=(-1,-2), keepdims=True) # (n, 1, 1) 
-        W = self.API.einsum('...ki, ...kj -> ...ji', Qi, L) # (n, 3, 6) Transforms into characteristic variables
-        G = self.API.matmul(Λ, W)                                           # (n, 3, 6) The flux for the characteristic variables is Λ*L*Q
+        W = self.API.einsum('...ki, ...kj -> ...ji', Qi, L)            # (n, 3, 6) Transforms into characteristic variables
+        G = self.API.matmul(Λ, W)                                      # (n, 3, 6) The flux for the characteristic variables is Λ*L*Q
         
         G_half = self.ReconstructedFlux(G, W, M, Δx, d, C, n_sep)     # (3, n)
         F_half = self.API.einsum('...kn, ...nki -> ...in', G_half, R) # (3, n) Brings back to conservative variables
@@ -521,10 +521,9 @@ class euler_equation_2D(equation):
         return R, U, V, P
 
     def ArithmeticAverage(self, Q):
-        r = 2
+        r  = 2
         Qa = (Q[...,r] + Q[...,r+1])/2
-
-        Qa=self.API.einsum('...xyv->...vxy',Qa)
+        Qa = self.API.einsum('...xyv->...vxy', Qa)
 
         R, U, V, P = self.PrimitiveVariables_2D(Qa)
 
@@ -534,60 +533,61 @@ class euler_equation_2D(equation):
 
         return U, V, A, H, h
 
-    def EigensystemX(self,Q):        
-        U, V, A, H, h = self.ArithmeticAverage(Q)
+    def EigensystemX(self,Q): 
+        
+        U, V, A, H, h   = self.ArithmeticAverage(Q)
         I2A, Hh, Uh, Vh = 0.5/A, H*h, U*h, V*h
         
-        ones_ref=self.API.ones(self.API.shape(U),dtype=U.dtype)
-        zero_ref=self.API.zeros(self.API.shape(U),dtype=U.dtype)
+        ones_ref = self.API.ones( self.API.shape(U), dtype=U.dtype)
+        zero_ref = self.API.zeros(self.API.shape(U), dtype=U.dtype)
         
-        R1c=self.API.stack([ones_ref  ,U-A         ,V       ,H - U*A],axis=-1)
-        R2c=self.API.stack([ones_ref  ,U           ,V       ,(U**2+V**2)/2 ],axis=-1)
-        R3c=self.API.stack([ones_ref*0,ones_ref*0  ,ones_ref,V ],axis=-1)
-        R4c=self.API.stack([ones_ref  ,U+A         ,V       ,H + U*A],axis=-1)
+        R1c = self.API.stack([ones_ref  , U-A       , V       , H - U*A      ], axis=-1)
+        R2c = self.API.stack([ones_ref  , U         , V       , (U**2+V**2)/2], axis=-1)
+        R3c = self.API.stack([ones_ref*0, ones_ref*0, ones_ref, V            ], axis=-1)
+        R4c = self.API.stack([ones_ref  , U+A       , V       , H + U*A      ], axis=-1)
         
-        R = self.API.stack([R1c,R2c,R3c,R4c],axis=-2)
+        L1c = self.API.stack([U*I2A+Hh-0.5, 2.0-2.0*Hh, -V        , Hh-0.5-U*I2A], axis=-1)
+        L2c = self.API.stack([-Uh-I2A     , 2.0*Uh    , ones_ref*0, I2A-Uh      ], axis=-1)
+        L3c = self.API.stack([-Vh         , 2.0*Vh    , ones_ref  , -Vh         ], axis=-1)
+        L4c = self.API.stack([h           , -2*h      , ones_ref*0, h           ], axis=-1)
         
-        L1c=self.API.stack([U*I2A+Hh-0.5      , 2.0-2.0*Hh, -V        ,    Hh-0.5-U*I2A],axis=-1)
-        L2c=self.API.stack([-Uh-I2A           , 2.0*Uh    , ones_ref*0,    I2A-Uh],axis=-1)
-        L3c=self.API.stack([-Vh               , 2.0*Vh    , ones_ref  ,    -Vh],axis=-1)
-        L4c=self.API.stack([h                 ,-2*h       , ones_ref*0,    h],axis=-1)
-        
-        L = self.API.stack([L1c,L2c,L3c,L4c],axis=-2)
-
         Λ1 = self.API.stack([     U-A, zero_ref, zero_ref, zero_ref], axis=-1)
         Λ2 = self.API.stack([zero_ref, U       , zero_ref, zero_ref], axis=-1)
         Λ3 = self.API.stack([zero_ref, zero_ref, U       , zero_ref], axis=-1)
-        Λ4 = self.API.stack([zero_ref, zero_ref, zero_ref, U+A], axis=-1)
-        Λ = self.API.stack([Λ1,Λ2,Λ3,Λ4], axis=-2)
+        Λ4 = self.API.stack([zero_ref, zero_ref, zero_ref, U+A     ], axis=-1)
+
+        R = self.API.stack([R1c, R2c, R3c, R4c], axis=-2)
+        L = self.API.stack([L1c, L2c, L3c, L4c], axis=-2)
+        Λ = self.API.stack([Λ1 , Λ2 , Λ3 , Λ4 ], axis=-2)
 
         return R, L, Λ
 
-    def EigensystemY(self,Q):        
-        U, V, A, H, h = self.ArithmeticAverage(Q)
+    def EigensystemY(self,Q):
+        
+        U, V, A, H, h   = self.ArithmeticAverage(Q)
         I2A, Hh, Uh, Vh = 0.5/A, H*h, U*h, V*h
         
-        ones_ref=self.API.ones(self.API.shape(U),dtype=U.dtype)
-        zero_ref=self.API.zeros(self.API.shape(U),dtype=U.dtype)
-        R1c=self.API.stack([ones_ref  ,U           ,V-A         ,H - V*A],axis=-1)
-        R2c=self.API.stack([ones_ref  ,U           ,V           ,(U**2+V**2)/2 ],axis=-1)
-        R3c=self.API.stack([ones_ref*0,ones_ref    ,ones_ref*0  ,U ],axis=-1)
-        R4c=self.API.stack([ones_ref  ,U           ,V+A         ,H + V*A],axis=-1)
+        ones_ref = self.API.ones( self.API.shape(U), dtype=U.dtype)
+        zero_ref = self.API.zeros(self.API.shape(U), dtype=U.dtype)
         
-        R = self.API.stack([R1c,R2c,R3c,R4c],axis=-2)
+        R1c = self.API.stack([ones_ref  , U       , V-A       , H - V*A      ], axis=-1)
+        R2c = self.API.stack([ones_ref  , U       , V         , (U**2+V**2)/2], axis=-1)
+        R3c = self.API.stack([ones_ref*0, ones_ref, ones_ref*0, U            ], axis=-1)
+        R4c = self.API.stack([ones_ref  , U       , V+A       , H + V*A      ], axis=-1)
         
-        L1c=self.API.stack([V*I2A+Hh-0.5      , 2.0-2.0*Hh, -U        ,    Hh-0.5-V*I2A],axis=-1)
-        L2c=self.API.stack([-Uh               , 2.0*Uh    , ones_ref  ,    -Uh],axis=-1)
-        L3c=self.API.stack([-Vh-I2A           , 2.0*Vh    , ones_ref*0,    I2A-Vh],axis=-1)
-        L4c=self.API.stack([h                 ,-2*h       , ones_ref*0,    h],axis=-1)
+        L1c = self.API.stack([V*I2A+Hh-0.5, 2.0-2.0*Hh, -U        , Hh-0.5-V*I2A], axis=-1)
+        L2c = self.API.stack([-Uh         , 2.0*Uh    , ones_ref  , -Uh         ], axis=-1)
+        L3c = self.API.stack([-Vh-I2A     , 2.0*Vh    , ones_ref*0, I2A-Vh      ], axis=-1)
+        L4c = self.API.stack([h           ,-2*h       , ones_ref*0, h           ], axis=-1)
         
-        L = self.API.stack([L1c,L2c,L3c,L4c],axis=-2)
-
-        Λ1 = self.API.stack([     V-A, zero_ref, zero_ref, zero_ref], axis=-1)
+        Λ1 = self.API.stack([V-A     , zero_ref, zero_ref, zero_ref], axis=-1)
         Λ2 = self.API.stack([zero_ref, V       , zero_ref, zero_ref], axis=-1)
         Λ3 = self.API.stack([zero_ref, zero_ref, V       , zero_ref], axis=-1)
-        Λ4 = self.API.stack([zero_ref, zero_ref, zero_ref, V+A], axis=-1)
-        Λ = self.API.stack([Λ1,Λ2,Λ3,Λ4], axis=-2)
+        Λ4 = self.API.stack([zero_ref, zero_ref, zero_ref, V+A     ], axis=-1)
+        
+        R = self.API.stack([R1c, R2c, R3c, R4c], axis=-2)
+        L = self.API.stack([L1c, L2c, L3c, L4c], axis=-2)
+        Λ = self.API.stack([Λ1 , Λ2 , Λ3 , Λ4 ], axis=-2)
 
         return R, L, Λ
 
@@ -595,13 +595,13 @@ class euler_equation_2D(equation):
         R, U, V, P = self.PrimitiveVariables_1D(Q)
         A = self.API.sqrt(self.γ*P/R)
 
-        return self.API.stack([U-A, U, U, U+A],axis=-2)
+        return self.API.stack([U-A, U, U, U+A], axis=-2)
 
     def EigenvaluesY(self,Q):
         R, U, V, P = self.PrimitiveVariables_1D(Q)
         A = self.API.sqrt(self.γ*P/R)
 
-        return self.API.stack([V-A, V, V, V+A],axis=-2)
+        return self.API.stack([V-A, V, V, V+A], axis=-2)
 
     def maximum_speed(self,Q):
         R, U, V, P = self.PrimitiveVariables_2D(Q)
@@ -614,65 +614,51 @@ class euler_equation_2D(equation):
         MV = self.API.max(max_V,axis=(-1,-2,-3),keepdims=True)
         return self.API.sqrt(MU+MV)
 
-    def ReconstructedFlux(self, F, Q, M,Δx, d, C):
-        F_plus  = (F + M*Q)/2
-        F_minus = (F - M*Q)/2
-
-        #F_plus=self.API.einsum('...ijk->...jik',F_plus)
-        #F_minus=self.API.einsum('...ijk->...jik',F_minus)
+    def ReconstructedFlux(self, F, Q, M, Δx, d, C):
         
-        F_half_plus  = self.ReconstructionMinus(F_plus[...,:-1],Δx, d, C)
-        F_half_minus = self.ReconstructionPlus(F_minus[...,1:],Δx, d, C)
+        F_plus  = (F + M*Q)/2 # (x, y, 4, 6)
+        F_minus = (F - M*Q)/2 # (x, y, 4, 6)
+
+        F_plus  = self.API.einsum('...ijkl -> ...kijl', F_plus)  # (4, x, y, 6)
+        F_minus = self.API.einsum('...ijkl -> ...kijl', F_minus) # (4, x, y, 6)
+        
+        F_half_plus  = self.ReconstructionMinus(F_plus[...,:-1], Δx, d, C) # (4, x, y)
+        F_half_minus = self.ReconstructionPlus( F_minus[...,1:], Δx, d, C) # (4, x, y)
 
         return F_half_plus + F_half_minus
 
-    def DerivadaEspacialX(self,Q, Δx, d, C, AdicionaGhostPoints, t=None, n_ghostpoints=3):
-        Ord = 5 # The order of the scheme
+    def DerivadaEspacialX(self, Q, Δx, d, C, AdicionaGhostPoints, t=None, n_ghostpoints=3):
         
-        Q = AdicionaGhostPoints(Q,self.API,n=n_ghostpoints, t=t) # ... x 4 x i+6 x j
-
-        #N = Q.shape[1]
-
-        Qi=slicer_X(Q,6,self.API)
-        Qi=self.API.einsum('...ijkl->...jkil',Qi) # ... x i x j x 4 x 6
+        Q  = AdicionaGhostPoints(Q, self.API, n=n_ghostpoints, t=t) # (  4, x+6, y)
+        Qi = slicer_X(Q, 6, self.API)                               # (  4, x+1, y, 6)
+        Qi = self.API.einsum('...ijkl -> ...jkil', Qi)              # (x+1,   y, 4, 6)
         
-        R, L, Λ = self.EigensystemX(Qi)
-        M = self.API.max(self.API.abs(Λ),axis=(-1,-2),keepdims=True)
-        # R -> ... x i x j x 4 x 4
-        # L -> ... x i x j x 4 x 4
-            
-        W = self.API.einsum('...ki,...kj -> ...ji',Qi,L)       # Transforms into characteristic variables
-        G = self.API.matmul(Λ,W)       # The flux for the characteristic variables is Λ * L*Q
-        #M = M[2:N-3]
-        G_half=self.ReconstructedFlux(G, W, M, Δx, d, C)
-        # L -> ... x i x j x 4
-
-        # self.API.pretty_print(self.API.shape(R))
-        # self.API.pretty_print(self.API.shape(G_half))
-        F_half = self.API.einsum('...nki,...nkij -> ...nki',G_half,R)  # Brings back to conservative variables
-        F_half=self.API.einsum('...ijk->...kij',F_half)
+        R, L, Λ = self.EigensystemX(Qi) # (x+1, y, 4, 4), (x+1, y, 4, 4), (x+1, y, 4, 4)
+        
+        M = self.API.max(self.API.abs(Λ), axis=(-1,-2), keepdims=True) # (x+1, y, 1, 1)
+        W = self.API.einsum('...ki, ...kj -> ...ji', Qi, L)            # (x+1, y, 4, 6) Transforms into characteristic variables
+        G = self.API.matmul(Λ, W)                                      # (x+1, y, 4, 6) The flux for the characteristic variables is Λ * L*Q
+                
+        G_half = self.ReconstructedFlux(G, W, M, Δx, d, C)               # (4, x+1, y)
+        F_half = self.API.einsum('...ixy, ...xyij -> ...jxy', G_half, R) # (4, x+1, y)
+        
         return F_half
 
     def DerivadaEspacialY(self,Q, Δy, d, C, AdicionaGhostPoints, t=None, n_ghostpoints=3):
-        Ord = 5 # The order of the scheme
-
-        Q = AdicionaGhostPoints(Q,self.API, n=n_ghostpoints,t=t)
-
-        #N = Q.shape[1]
-
-        Qi=slicer_Y(Q,6,self.API)
-        Qi=self.API.einsum('...ijkl->...jkil',Qi)
         
-        Λ = self.EigenvaluesY(Qi)
-        R, L, Λ = self.EigensystemY(Qi)
-        M = self.API.max(self.API.abs(Λ),axis=(-1,-2),keepdims=True)
-            
-        W = self.API.einsum('...ki,...kj -> ...ji',Qi,L)       # Transforms into characteristic variables
-        G = self.API.matmul(Λ,W)       # The flux for the characteristic variables is Λ * L*Q
-        #M = M[2:N-3]
-        G_half=self.ReconstructedFlux(G, W, M, Δy, d, C)
-        F_half = self.API.einsum('...nki,...nkij -> ...nki',G_half,R)  # Brings back to conservative variables
-        F_half=self.API.einsum('...ijk->...kij',F_half)
+        Q  = AdicionaGhostPoints(Q, self.API, n=n_ghostpoints, t=t) # (4,   x, y+6)
+        Qi = slicer_Y(Q, 6, self.API)                               # (4,   x, y+1, 6)
+        Qi = self.API.einsum('...ijkl -> ...jkil', Qi)              # (x, y+1,   4, 6)
+        
+        R, L, Λ = self.EigensystemY(Qi) # (x, y+1, 4, 4), (x, y+1, 4, 4), (x, y+1, 4, 4)
+        
+        M = self.API.max(self.API.abs(Λ), axis=(-1,-2), keepdims=True) # (x, y+1, 1, 1)
+        W = self.API.einsum('...ki, ...kj -> ...ji', Qi, L)            # (x, y+1, 4, 6) Transforms into characteristic variables
+        G = self.API.matmul(Λ, W)                                      # (x, y+1, 4, 6) The flux for the characteristic variables is Λ * L*Q
+        
+        G_half = self.ReconstructedFlux(G, W, M, Δy, d, C)               # (4, x, y+1)
+        F_half = self.API.einsum('...ixy, ...xyij -> ...jxy', G_half, R) # (4, x, y+1) Brings back to conservative variables
+        
         return F_half
 
 def slicer(data, n, API):
