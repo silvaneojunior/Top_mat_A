@@ -584,6 +584,7 @@ class simulation_2D(simulation):
         return u
     
     def Sim_step_graph(self,u, Δt, Δx, Δy,fronteiraX, fronteiraY,Force, t=None):
+        print('compiling')
 
         duX=self.DerivadaEspacialX(u, Δx, fronteiraX, t=t)
         duY=self.DerivadaEspacialY(u, Δy, fronteiraY, t=t)
